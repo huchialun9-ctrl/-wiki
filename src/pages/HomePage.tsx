@@ -75,45 +75,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Features Guide */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Zap className="text-yellow-500" />
-            快速上手指南
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-[#2F2F2F] p-6 rounded-2xl border border-notion-border-light dark:border-notion-border-dark hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-500 rounded-xl flex items-center justify-center mb-4">
-                <FileText size={24} />
-              </div>
-              <h3 className="font-bold text-lg mb-2">1. 建立懶人包專案</h3>
-              <p className="text-sm text-notion-text-muted-light leading-relaxed">
-                點擊「新增專案」來建立一個空白畫布。您可以自由撰寫大綱，或是使用圖文並茂的區塊編輯器來整理思緒。
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-[#2F2F2F] p-6 rounded-2xl border border-notion-border-light dark:border-notion-border-dark hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-500 rounded-xl flex items-center justify-center mb-4">
-                <Bot size={24} />
-              </div>
-              <h3 className="font-bold text-lg mb-2">2. 讓 AI 為您自動解析</h3>
-              <p className="text-sm text-notion-text-muted-light leading-relaxed">
-                在編輯器上方貼上 YouTube 影片網址或新聞連結，強大的 AI 引擎將自動為您萃取時間線、樹狀圖或重點摘要。
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-[#2F2F2F] p-6 rounded-2xl border border-notion-border-light dark:border-notion-border-dark hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-500 rounded-xl flex items-center justify-center mb-4">
-                <Users size={24} />
-              </div>
-              <h3 className="font-bold text-lg mb-2">3. 團隊即時協作</h3>
-              <p className="text-sm text-notion-text-muted-light leading-relaxed">
-                在左側邊欄切換或設定您的團隊。邀請企劃、剪輯師加入，大家就能在同一個懶人包上同步留言與編輯。
-              </p>
-            </div>
-          </div>
-        </div>
-        
         {/* Recent Projects Grid */}
         <div>
           <div className="flex items-center justify-between mb-6">

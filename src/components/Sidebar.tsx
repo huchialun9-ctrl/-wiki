@@ -11,15 +11,25 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const { token, user, logout, teams, currentTeam, setCurrentTeam } = useAuth();
 
   useEffect(() => {
     if (isOpen && token && currentTeam) {
+      // Fetch projects
       fetch(`http://localhost:3000/api/projects?teamId=${currentTeam.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
         .then(data => setProjects(data))
+        .catch(err => console.error(err));
+
+      // Fetch history
+      fetch(`http://localhost:3000/api/user/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => setHistory(data))
         .catch(err => console.error(err));
     }
   }, [isOpen, token, currentTeam]);
@@ -76,19 +86,6 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
         </div>
       </div>
 
-      <div className="px-3 mb-2">
-        <div 
-          onClick={() => {
-            navigate('/history');
-            if (window.innerWidth < 768) toggle();
-          }}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors cursor-pointer"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>全域歷史紀錄</span>
-        </div>
-      </div>
-
       {/* Global Search */}
       <div className="px-3 my-2">
         <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors">
@@ -103,6 +100,24 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
 
       {/* Navigation Tree */}
       <div className="flex-1 overflow-y-auto py-2">
+        
+        {/* History Section */}
+        {history.filter(h => h.project?.teamId === currentTeam?.id).length > 0 && (
+          <div className="px-3 mb-4">
+            <div className="text-xs font-semibold text-notion-text-muted-light dark:text-notion-text-muted-dark mb-1 px-2 uppercase tracking-wider flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <ChevronDown size={14} />
+                <span>歷史紀錄</span>
+              </div>
+            </div>
+            <div className="pl-2 border-l-2 border-transparent ml-2">
+              {history.filter(h => h.project?.teamId === currentTeam?.id).map((h: any) => (
+                <NavItem key={h.id} to={`/project/${h.projectId}`} icon={<FileText size={16} />} text={h.project?.title || '已刪除的懶人包'} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {(Object.entries(groupedProjects) as [string, any[]][]).map(([category, items]) => (
           <div key={category} className="px-3 mb-4">
             <div 
