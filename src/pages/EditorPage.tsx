@@ -90,58 +90,99 @@ export default function EditorPage() {
 
   const generateBlocksFromResult = (data: any) => {
     if (!data.result) return [];
+    
+    // 1. 樹狀圖 (Tree)
     if (data.format === 'tree' && data.result.tree) {
+      const { title, overview, nodes } = data.result.tree;
+      const blocks: any[] = [];
+      
+      if (title) blocks.push({ type: "heading", props: { level: 2 }, content: title });
+      if (overview) blocks.push({ type: "callout", content: overview });
+      
+      const buildTree = (subNodes: any[]): any[] => {
+        if (!subNodes || !Array.isArray(subNodes)) return [];
+        return subNodes.map(sub => ({
+          type: "bulletListItem",
+          content: sub.concept + (sub.details ? `：${sub.details}` : ""),
+          children: buildTree(sub.subConcepts)
+        }));
+      };
+      
+      if (nodes && Array.isArray(nodes)) {
+        nodes.forEach((n: any) => {
+          if (n.imagePrompt) {
+            blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(n.imagePrompt)}?width=800&height=400&nologo=true` } });
+          }
+          blocks.push({
+            type: "heading",
+            props: { level: 3 },
+            content: n.concept,
+            children: buildTree(n.subConcepts)
+          });
+        });
+      }
+      return blocks;
+    } 
+    // 2. 懶人包摘要 (Summary)
+    else if (data.format === 'summary' && data.result.summary) {
+      const { title, tldr, keyPoints } = data.result.summary;
+      const blocks: any[] = [];
+      
+      if (title) blocks.push({ type: "heading", props: { level: 2 }, content: title });
+      if (tldr) blocks.push({ type: "callout", content: `💡 一分鐘速讀：${tldr}` });
+      
+      if (keyPoints && Array.isArray(keyPoints)) {
+        keyPoints.forEach((item: any) => {
+          if (item.imagePrompt) {
+            blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(item.imagePrompt)}?width=800&height=400&nologo=true` } });
+          }
+          blocks.push({ type: "heading", props: { level: 3 }, content: item.point });
+          if (item.explanation) blocks.push({ type: "paragraph", content: item.explanation });
+          
+          if (item.details && Array.isArray(item.details)) {
+            item.details.forEach((detail: string) => {
+              blocks.push({ type: "bulletListItem", content: detail });
+            });
+          }
+          if (item.quotes && Array.isArray(item.quotes)) {
+            item.quotes.forEach((quote: string) => {
+              blocks.push({ type: "quote", content: quote });
+            });
+          }
+        });
+      }
+      return blocks;
+    } 
+    // 3. 時間線 (Timeline)
+    else if (data.format === 'timeline' && data.result.timeline) {
+      const { title, events } = data.result.timeline;
+      const blocks: any[] = [];
+      
+      if (title) blocks.push({ type: "heading", props: { level: 2 }, content: title });
+      
+      if (events && Array.isArray(events)) {
+        events.forEach((item: any) => {
+          if (item.imagePrompt) {
+            blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(item.imagePrompt)}?width=800&height=400&nologo=true` } });
+          }
+          blocks.push({ type: "heading", props: { level: 3 }, content: `📌 [${item.time}] ${item.title}` });
+          if (item.description) blocks.push({ type: "paragraph", content: item.description });
+          if (item.impact) blocks.push({ type: "quote", content: `影響與後果：${item.impact}` });
+        });
+      }
+      return blocks;
+    }
+    
+    // 降級兼容舊版資料
+    if (data.format === 'tree' && Array.isArray(data.result.tree)) {
+      // 舊版 tree 處理
       const blocks: any[] = [];
       data.result.tree.forEach((n: any) => {
-        if (n.imagePrompt) {
-          blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(n.imagePrompt)}?width=800&height=400&nologo=true` } });
-        }
-        const buildTree = (nodes: any[]): any[] => {
-          if (!nodes || !Array.isArray(nodes)) return [];
-          return nodes.map(sub => ({
-            type: "bulletListItem",
-            content: sub.concept + (sub.details ? `：${sub.details}` : ""),
-            children: buildTree(sub.subConcepts)
-          }));
-        };
-        blocks.push({
-          type: "heading",
-          props: { level: 2 },
-          content: n.concept,
-          children: buildTree(n.subConcepts)
-        });
+        blocks.push({ type: "heading", props: { level: 3 }, content: n.concept });
       });
       return blocks;
-    } else if (data.format === 'summary' && data.result.summary) {
-      return data.result.summary.flatMap((item: any) => {
-        const blocks: any[] = [];
-        if (item.imagePrompt) {
-          blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(item.imagePrompt)}?width=800&height=400&nologo=true` } });
-        }
-        blocks.push({
-          type: "heading",
-          props: { level: 3 },
-          content: item.point
-        });
-        blocks.push({
-          type: "paragraph",
-          content: item.explanation
-        });
-        return blocks;
-      });
-    } else if (data.result.timeline) {
-      return data.result.timeline.flatMap((item: any) => {
-        const blocks: any[] = [];
-        if (item.imagePrompt) {
-          blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(item.imagePrompt)}?width=800&height=400&nologo=true` } });
-        }
-        blocks.push({
-          type: "bulletListItem",
-          content: `[${item.time}] ${item.text}`
-        });
-        return blocks;
-      });
     }
+    
     return [];
   };
 
