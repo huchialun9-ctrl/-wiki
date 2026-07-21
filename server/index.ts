@@ -461,11 +461,35 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
 
     if (url) {
       // URL Scraping
-      const response = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const response = await axios.get(url, { 
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5'
+        },
+        timeout: 10000
+      });
       const $ = cheerio.load(response.data);
-      $('script, style, nav, footer, iframe, noscript').remove();
-      textContent = $('body').text().replace(/\s+/g, ' ').trim();
-      fileName = $('title').text() || url;
+      
+      // 深度去噪 (Remove structural noise)
+      $('script, style, nav, footer, header, aside, iframe, noscript, form, button, .ad, .advertisement, .sidebar, .comments, #comments, .menu').remove();
+      
+      // 保留排版呼吸空間 (Preserve structural spacing by inserting newlines)
+      $('p, div, h1, h2, h3, h4, h5, h6, li, article, section').each((_, el) => {
+        $(el).prepend('\\n');
+        $(el).append('\\n');
+      });
+      $('br').replaceWith('\\n');
+
+      // 提取文字並進行正則壓縮 (Extract and normalize text)
+      textContent = $('body').text()
+        .replace(/^[ \\t]+/gm, '')         // 去除每行開頭的空白
+        .replace(/[ \\t]+$/gm, '')         // 去除每行結尾的空白
+        .replace(/[ \\t]+/g, ' ')          // 將連續空白縮減為單一空格
+        .replace(/\\n{3,}/g, '\\n\\n')     // 限制連續換行最多為兩個 (保留段落)
+        .trim();
+        
+      fileName = $('title').text().trim() || url;
     } else if (req.file) {
       // File Upload
       const filePath = req.file.path;
