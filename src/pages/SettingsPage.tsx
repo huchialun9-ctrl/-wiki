@@ -76,6 +76,9 @@ export default function SettingsPage() {
   };
 
   const roles = ['管理員', '主持人', '企劃', '剪輯師', '來賓'];
+  
+  const currentUserRole = users.find(u => u.userId === currentUser?.id)?.role;
+  const isAdmin = currentUserRole === '管理員';
 
   if (loading) {
     return <div className="p-8 text-center text-notion-text-muted-light">載入中...</div>;
@@ -100,22 +103,24 @@ export default function SettingsPage() {
         </div>
 
         {/* Invite Form */}
-        <div className="mb-8 bg-white dark:bg-[#2F2F2F] rounded-xl shadow-sm border border-notion-border-light dark:border-notion-border-dark p-6">
-          <h3 className="font-semibold text-lg mb-2">邀請成員加入 {currentTeam?.name}</h3>
-          <p className="text-sm text-notion-text-muted-light mb-4">輸入已註冊使用者的 Email，即可將他們加入您的團隊。</p>
-          <form onSubmit={handleInvite} className="flex gap-2">
-            <input 
-              type="email" 
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
-              placeholder="name@example.com"
-              className="flex-1 bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded-lg px-4 py-2 outline-none focus:border-blue-500"
-            />
-            <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-              邀請加入
-            </button>
-          </form>
-        </div>
+        {isAdmin && (
+          <div className="mb-8 bg-white dark:bg-[#2F2F2F] rounded-xl shadow-sm border border-notion-border-light dark:border-notion-border-dark p-6">
+            <h3 className="font-semibold text-lg mb-2">邀請成員加入 {currentTeam?.name}</h3>
+            <p className="text-sm text-notion-text-muted-light mb-4">輸入已註冊使用者的 Email，即可將他們加入您的團隊。</p>
+            <form onSubmit={handleInvite} className="flex gap-2">
+              <input 
+                type="email" 
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="flex-1 bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded-lg px-4 py-2 outline-none focus:border-blue-500"
+              />
+              <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                邀請加入
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-[#2F2F2F] rounded-xl shadow-sm border border-notion-border-light dark:border-notion-border-dark overflow-hidden">
           <div className="p-5 border-b border-notion-border-light dark:border-notion-border-dark bg-gray-50/50 dark:bg-black/20 flex items-center gap-2">
@@ -142,15 +147,19 @@ export default function SettingsPage() {
                 </div>
                 
                 <div className="flex items-center gap-4">
-                  <select
-                    value={u.role}
-                    onChange={(e) => handleRoleChange(u.userId, e.target.value)}
-                    className="bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
-                  >
-                    {roles.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
+                  {isAdmin ? (
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u.userId, e.target.value)}
+                      className="bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      {roles.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="px-3 py-1.5 text-sm text-notion-text-muted-light">{u.role}</span>
+                  )}
                 </div>
               </div>
             ))}
