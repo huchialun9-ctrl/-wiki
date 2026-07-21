@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, Shield } from 'lucide-react';
+import { Settings, Shield, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const { token, user: currentUser, currentTeam } = useAuth();
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (token && currentTeam) {
@@ -76,8 +78,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-notion-bg-light dark:bg-notion-bg-dark h-full">
-      <div className="max-w-4xl mx-auto py-12 px-8">
+    <div className="flex-1 overflow-y-auto bg-notion-bg-light dark:bg-notion-bg-dark h-full relative">
+      <div className="max-w-4xl mx-auto py-12 px-8 pt-16 relative">
+        <button 
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-8 flex items-center gap-1.5 text-sm font-medium text-notion-text-muted-light hover:text-notion-text-light dark:text-notion-text-muted-dark dark:hover:text-notion-text-dark transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 px-3 py-1.5 rounded-full"
+        >
+          <ArrowLeft size={16} /> 返回工作區
+        </button>
+
         <div className="mb-8 flex items-center gap-3 border-b border-notion-border-light dark:border-notion-border-dark pb-6">
           <Settings size={28} />
           <div>
