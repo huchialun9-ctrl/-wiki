@@ -30,7 +30,7 @@ export default function SettingsPage() {
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!token) return;
     // Optimistic update
-    setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
     
     try {
       await fetch(`http://localhost:3000/api/users/${userId}/role`, {

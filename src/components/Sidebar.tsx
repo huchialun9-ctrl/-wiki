@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="w-6 h-6 rounded bg-white overflow-hidden flex items-center justify-center border border-gray-100">
-            <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
+            <img src="/blob.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <span className="font-semibold text-sm">懶人包 Wiki</span>
         </div>
