@@ -11,7 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
-  const { token } = useAuth();
+  const { token, user, logout } = useAuth();
 
   useEffect(() => {
     if (isOpen && token) {
@@ -111,6 +111,20 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* User Info at Bottom */}
+      <div className="p-4 border-t border-notion-border-light dark:border-notion-border-dark mt-auto bg-notion-bg-light dark:bg-notion-bg-dark">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 truncate">
+            <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold shrink-0">{user?.name?.charAt(0)}</div>
+            <div className="flex flex-col truncate">
+              <span className="font-semibold text-sm truncate">{user?.name}</span>
+              <span className="text-xs text-notion-text-muted-light truncate">{user?.role}</span>
+            </div>
+          </div>
+          <button onClick={logout} className="text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors shrink-0">登出</button>
+        </div>
       </div>
     </aside>
   );

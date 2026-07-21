@@ -35,17 +35,7 @@ function MainLayout() {
       <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} />
       
       <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
-        {/* User Info Bar at top right */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4 bg-white/80 dark:bg-black/50 backdrop-blur-md px-4 py-2 rounded-full border border-notion-border-light dark:border-notion-border-dark shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">{user?.name?.charAt(0)}</div>
-            <div className="text-sm">
-              <span className="font-semibold">{user?.name}</span>
-              <span className="text-xs text-notion-text-muted-light ml-2 px-1.5 py-0.5 bg-black/5 rounded">{user?.role}</span>
-            </div>
-          </div>
-          <button onClick={logout} className="text-xs text-red-500 hover:underline">登出</button>
-        </div>
+
 
         <Outlet context={{ sidebarOpen, setSidebarOpen }} />
       </main>
