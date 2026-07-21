@@ -359,11 +359,19 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     let systemPrompt = '';
     
     if (format === 'tree') {
-      systemPrompt = "You are an expert content analyzer. Read the provided document and extract a hierarchical relationship tree of the main concepts. Output strictly in JSON format matching this structure: { \"tree\": [ { \"concept\": \"Main Concept\", \"details\": \"Explanation\", \"subConcepts\": [ { \"concept\": \"Sub concept\", \"details\": \"\", \"subConcepts\": [] } ] } ] }";
+      systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提煉出具備豐富層次結構的「樹狀圖」。
+請務必深入分析，最少提煉出 3 到 5 個主概念，每個主概念下須包含多個子概念，並附上詳細說明。
+請嚴格以 JSON 格式輸出，結構必須為：
+{ "tree": [ { "concept": "主要概念", "details": "詳細說明", "subConcepts": [ { "concept": "子概念", "details": "詳細說明", "subConcepts": [] } ] } ] }`;
     } else if (format === 'summary') {
-      systemPrompt = "You are an expert content analyzer. Read the provided document and extract the top 5 most important key takeaways. Output strictly in JSON format matching this structure: { \"summary\": [ { \"point\": \"Key Point X\", \"explanation\": \"Explanation\" } ] }";
+      systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提取出最重要的 5 到 8 個關鍵重點（Key Takeaways）。
+請詳細解釋每個重點，確保摘要具備高度參考價值。
+請嚴格以 JSON 格式輸出，結構必須為：
+{ "summary": [ { "point": "重點標題", "explanation": "重點詳細說明" } ] }`;
     } else {
-      systemPrompt = "You are an expert content analyzer. You will read the provided document and extract a logical timeline or list of key points. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"string (e.g. 00:00 or Point 1)\", \"text\": \"string\" } ] }";
+      systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並依照時間先後順序或邏輯順序，提取出具體的「時間軸」或「流程步驟」。
+請嚴格以 JSON 格式輸出，結構必須為：
+{ "timeline": [ { "time": "時間點或步驟名稱 (例如: 2023年 或 步驟一)", "text": "具體事件或內容描述" } ] }`;
     }
 
     if (textContent.length > 15000) {
