@@ -119,10 +119,28 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/teams', authenticateToken, async (req: any, res) => {
   try {
-    const teams = await prisma.team.findMany({
+    let teams = await prisma.team.findMany({
       where: { members: { some: { userId: req.user.id } } },
       include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } }
     });
+
+    // Backwards compatibility for old accounts without a team
+    if (teams.length === 0) {
+      const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+      if (user) {
+        const newTeam = await prisma.team.create({
+          data: { name: `${user.name} 的團隊`, ownerId: user.id }
+        });
+        await prisma.teamMember.create({
+          data: { teamId: newTeam.id, userId: user.id, role: '管理員' }
+        });
+        teams = await prisma.team.findMany({
+          where: { members: { some: { userId: req.user.id } } },
+          include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } }
+        });
+      }
+    }
+
     res.json(teams);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch teams' });

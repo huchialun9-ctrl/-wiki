@@ -5,16 +5,20 @@ import { useNavigate } from 'react-router-dom';
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
-  const { token, user: currentUser, currentTeam } = useAuth();
+  const { token, user: currentUser, currentTeam, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (token && currentTeam) {
-      fetchUsers();
+    if (!authLoading) {
+      if (token && currentTeam) {
+        fetchUsers();
+      } else {
+        setLoading(false);
+      }
     }
-  }, [token, currentTeam]);
+  }, [token, currentTeam, authLoading]);
 
   const fetchUsers = async () => {
     if (!currentTeam) return;
