@@ -28,7 +28,16 @@ export default function EditorPage() {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
-        .then(data => setProject(data))
+        .then(data => {
+          setProject(data);
+          
+          // Record history
+          fetch('http://localhost:3000/api/user/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ projectId: id })
+          }).catch(err => console.error('Failed to record history', err));
+        })
         .catch(err => console.error(err));
     }
   }, [id, token]);

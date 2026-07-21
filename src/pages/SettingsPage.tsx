@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const { token, user: currentUser, currentTeam, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('');
   
   // Custom role state
   const [newRoleName, setNewRoleName] = useState('');
@@ -74,7 +75,7 @@ export default function SettingsPage() {
       const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ email: inviteEmail, role: teamRoles[0]?.name || '企劃' })
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole || teamRoles[0]?.name || '企劃', roleId: inviteRole || teamRoles[0]?.id })
       });
       if (res.ok) {
         setInviteEmail('');
@@ -194,7 +195,16 @@ export default function SettingsPage() {
                 placeholder="name@example.com"
                 className="flex-1 bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded-lg px-4 py-2 outline-none focus:border-blue-500"
               />
-              <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+              <select
+                value={inviteRole || (teamRoles[0]?.id || '')}
+                onChange={e => setInviteRole(e.target.value)}
+                className="bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded-lg px-4 py-2 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                {teamRoles.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+              <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors shrink-0">
                 邀請加入
               </button>
             </form>

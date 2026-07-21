@@ -263,6 +263,69 @@ app.delete('/api/teams/:teamId/roles/:roleId', authenticateToken, async (req: an
   }
 });
 
+// --- User Profile & History API ---
+
+app.get('/api/user/history', authenticateToken, async (req: any, res) => {
+  try {
+    const history = await prisma.userHistory.findMany({
+      where: { userId: req.user.id },
+      orderBy: { lastAccessed: 'desc' },
+      include: {
+        project: {
+          include: { team: true }
+        }
+      },
+      take: 50
+    });
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+app.post('/api/user/history', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.body;
+    if (!projectId) return res.status(400).json({ error: 'projectId is required' });
+
+    const history = await prisma.userHistory.upsert({
+      where: {
+        userId_projectId: {
+          userId: req.user.id,
+          projectId: projectId
+        }
+      },
+      update: { lastAccessed: new Date() },
+      create: {
+        userId: req.user.id,
+        projectId: projectId
+      }
+    });
+    res.json(history);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to record history' });
+  }
+});
+
+app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
+  try {
+    const { name, password } = req.body;
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (password) updateData.password = await bcrypt.hash(password, 10);
+    
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: { id: true, name: true, email: true, role: true }
+    });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
 // --- Database API Routes ---
 
 // Get all projects

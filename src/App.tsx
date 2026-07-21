@@ -5,6 +5,8 @@ import HomePage from './pages/HomePage';
 import EditorPage from './pages/EditorPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
+import HistoryPage from './pages/HistoryPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -80,6 +82,8 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="project/:id" element={<EditorPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="history" element={<HistoryPage />} />
           </Route>
         </Routes>
       </AuthProvider>

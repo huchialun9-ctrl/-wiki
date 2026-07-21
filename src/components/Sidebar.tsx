@@ -72,7 +72,20 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
           className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors cursor-pointer"
         >
           <Settings size={16} />
-          <span>設定與權限</span>
+          <span>團隊設定與權限</span>
+        </div>
+      </div>
+
+      <div className="px-3 mb-2">
+        <div 
+          onClick={() => {
+            navigate('/history');
+            if (window.innerWidth < 768) toggle();
+          }}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors cursor-pointer"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>全域歷史紀錄</span>
         </div>
       </div>
 
@@ -127,11 +140,17 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
       {/* User Info at Bottom */}
       <div className="p-4 border-t border-notion-border-light dark:border-notion-border-dark mt-auto bg-notion-bg-light dark:bg-notion-bg-dark">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 truncate">
+          <div 
+            onClick={() => {
+              navigate('/profile');
+              if (window.innerWidth < 768) toggle();
+            }}
+            className="flex items-center gap-2 truncate cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 p-1 -ml-1 rounded transition-colors"
+          >
             <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold shrink-0">{user?.name?.charAt(0)}</div>
             <div className="flex flex-col truncate">
               <span className="font-semibold text-sm truncate">{user?.name}</span>
-              <span className="text-xs text-notion-text-muted-light truncate">{user?.role}</span>
+              <span className="text-xs text-notion-text-muted-light truncate">個人設定</span>
             </div>
           </div>
           <button onClick={logout} className="text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors shrink-0">登出</button>
