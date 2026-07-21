@@ -179,9 +179,9 @@ export default function EditorPage() {
               className="bg-transparent text-xs font-semibold border-none outline-none text-notion-text-muted-light dark:text-notion-text-muted-dark hover:text-blue-500 cursor-pointer disabled:opacity-50 appearance-none"
               title="選擇 AI 分析模式"
             >
-              <option value="timeline">⏱️ 時間線</option>
-              <option value="tree">🌳 樹狀圖</option>
-              <option value="summary">📝 摘要</option>
+              <option value="timeline">時間線</option>
+              <option value="tree">樹狀圖</option>
+              <option value="summary">摘要</option>
             </select>
             <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-3"></div>
             
