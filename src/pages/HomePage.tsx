@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "../config";
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, FileText, Bot, Users, Zap, LayoutDashboard } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 

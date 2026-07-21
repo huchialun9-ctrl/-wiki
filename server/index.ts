@@ -620,6 +620,26 @@ io.on('connection', (socket) => {
   });
 });
 
+// ─────────────────────────────────────────────
+// 前端靜態檔案 (Vite build output → /dist)
+// ─────────────────────────────────────────────
+const frontendDist = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  // SPA fallback：所有非 /api 路由都回傳 index.html
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+  console.log(`✅ Serving frontend from ${frontendDist}`);
+} else {
+  // 僅後端模式：根路由顯示 API 狀態
+  app.get('/', (_, res) => {
+    res.json({ message: '🚀 Logic Hub Backend API is running successfully!' });
+  });
+  console.log('ℹ️  No frontend dist found, running in API-only mode');
+}
+
 httpServer.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });

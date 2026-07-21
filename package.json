@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:all": "tsc -b && vite build && cd server && npm install && npx prisma generate",
+    "start": "cd server && npx tsx index.ts",
     "lint": "oxlint",
     "preview": "vite preview"
   },
