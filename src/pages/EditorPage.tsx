@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import NotionEditor from '../components/NotionEditor';
 import { Paperclip, Loader2, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -8,6 +8,7 @@ import CommentPanel from '../components/CommentPanel';
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState<any>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<{ blockId: string; text: string } | null>(null);
@@ -143,6 +144,44 @@ export default function EditorPage() {
     }
     return [];
   };
+
+  useEffect(() => {
+    const analyzeUrl = searchParams.get('analyze_url');
+    if (analyzeUrl && token && !isUploading) {
+      const runAutoAnalysis = async () => {
+        setIsUploading(true);
+        try {
+          const response = await fetch('http://localhost:3000/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ url: analyzeUrl, format: 'auto' })
+          });
+          const data = await response.json();
+          
+          if (data.success && data.result) {
+            const blocksToInsert = generateBlocksFromResult(data);
+            
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('insertBlocks', { 
+                detail: [
+                  { type: "heading", props: { level: 3 }, content: `🌐 網頁解析: ${data.filename || analyzeUrl}` },
+                  ...blocksToInsert,
+                  { type: "paragraph", content: "" }
+                ]
+              }));
+            }, 1500);
+          }
+        } catch (error) {
+          console.error("Auto URL Analysis failed", error);
+        } finally {
+          setIsUploading(false);
+          searchParams.delete('analyze_url');
+          setSearchParams(searchParams);
+        }
+      };
+      runAutoAnalysis();
+    }
+  }, [searchParams, token]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
