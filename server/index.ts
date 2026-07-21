@@ -175,7 +175,7 @@ app.get('/api/teams/:teamId/members', authenticateToken, async (req: any, res) =
 
 app.post('/api/teams/:teamId/invite', authenticateToken, async (req: any, res) => {
   try {
-    const { email, role } = req.body;
+    const { email, role, roleId } = req.body;
     const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
     if (!team || team.ownerId !== req.user.id) return res.status(403).json({ error: '只有團隊所有權人可以邀請成員' });
     
@@ -184,8 +184,8 @@ app.post('/api/teams/:teamId/invite', authenticateToken, async (req: any, res) =
     
     const newMember = await prisma.teamMember.upsert({
       where: { teamId_userId: { teamId: req.params.teamId, userId: targetUser.id } },
-      update: { role: role || '企劃' },
-      create: { teamId: req.params.teamId, userId: targetUser.id, role: role || '企劃' },
+      update: { role: role || '企劃', roleId: roleId || null },
+      create: { teamId: req.params.teamId, userId: targetUser.id, role: role || '企劃', roleId: roleId || null },
       include: { user: { select: { id: true, name: true, email: true } } }
     });
     res.json(newMember);
