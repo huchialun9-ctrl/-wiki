@@ -13,16 +13,31 @@ model Team {
   ownerId   String       @db.ObjectId
   owner     User         @relation("TeamOwner", fields: [ownerId], references: [id])
   members   TeamMember[]
+  roles     TeamRole[]
   projects  Project[]
+}
+
+model TeamRole {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  canEdit     Boolean      @default(true)
+  canInvite   Boolean      @default(false)
+  teamId      String       @db.ObjectId
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  
+  @@unique([teamId, name])
 }
 
 model TeamMember {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   teamId    String    @db.ObjectId
   userId    String    @db.ObjectId
-  role      String    @default("企劃") // 主持人, 企劃, 剪輯師, 來賓
+  role      String    @default("企劃") // Legacy string fallback
+  roleId    String?   @db.ObjectId
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamRole  TeamRole? @relation(fields: [roleId], references: [id])
   
   @@unique([teamId, userId])
 }

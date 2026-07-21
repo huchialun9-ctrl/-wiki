@@ -90,14 +90,14 @@ export default function EditorPage() {
           if (!nodes || !Array.isArray(nodes)) return [];
           return nodes.map(sub => ({
             type: "bulletListItem",
-            content: (sub.icon ? `${sub.icon} ` : "") + sub.concept + (sub.details ? `：${sub.details}` : ""),
+            content: sub.concept + (sub.details ? `：${sub.details}` : ""),
             children: buildTree(sub.subConcepts)
           }));
         };
         blocks.push({
           type: "heading",
           props: { level: 2 },
-          content: `${n.icon || '📌'} ${n.concept}`,
+          content: n.concept,
           children: buildTree(n.subConcepts)
         });
       });
@@ -111,7 +111,7 @@ export default function EditorPage() {
         blocks.push({
           type: "heading",
           props: { level: 3 },
-          content: `${item.icon || '💡'} ${item.point}`
+          content: item.point
         });
         blocks.push({
           type: "paragraph",
@@ -127,7 +127,7 @@ export default function EditorPage() {
         }
         blocks.push({
           type: "bulletListItem",
-          content: `${item.icon || '⏳'} [${item.time}] ${item.text}`
+          content: `[${item.time}] ${item.text}`
         });
         return blocks;
       });

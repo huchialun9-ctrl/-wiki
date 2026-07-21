@@ -83,12 +83,20 @@ app.post('/api/auth/register', async (req, res) => {
       data: { email, password: hashedPassword, name, role: role || '企劃' }
     });
     
-    // Auto-create default team
+    // Auto-create default team and roles
     const team = await prisma.team.create({
       data: { name: `${name} 的團隊`, ownerId: user.id }
     });
+    
+    const adminRole = await prisma.teamRole.create({
+      data: { name: '管理員', canEdit: true, canInvite: true, teamId: team.id }
+    });
+    const guestRole = await prisma.teamRole.create({
+      data: { name: '來賓', canEdit: false, canInvite: false, teamId: team.id }
+    });
+    
     await prisma.teamMember.create({
-      data: { teamId: team.id, userId: user.id, role: '管理員' }
+      data: { teamId: team.id, userId: user.id, role: '管理員', roleId: adminRole.id }
     });
     
     const token = jwt.sign({ id: user.id, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
@@ -131,12 +139,15 @@ app.get('/api/teams', authenticateToken, async (req: any, res) => {
         const newTeam = await prisma.team.create({
           data: { name: `${user.name} 的團隊`, ownerId: user.id }
         });
+        const adminRole = await prisma.teamRole.create({
+          data: { name: '管理員', canEdit: true, canInvite: true, teamId: newTeam.id }
+        });
         await prisma.teamMember.create({
-          data: { teamId: newTeam.id, userId: user.id, role: '管理員' }
+          data: { teamId: newTeam.id, userId: user.id, role: '管理員', roleId: adminRole.id }
         });
         teams = await prisma.team.findMany({
           where: { members: { some: { userId: req.user.id } } },
-          include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } }
+          include: { members: { include: { user: { select: { id: true, name: true, email: true } }, teamRole: true } } }
         });
       }
     }
@@ -154,7 +165,7 @@ app.get('/api/teams/:teamId/members', authenticateToken, async (req: any, res) =
 
     const members = await prisma.teamMember.findMany({
       where: { teamId: req.params.teamId },
-      include: { user: { select: { id: true, name: true, email: true } } }
+      include: { user: { select: { id: true, name: true, email: true } }, teamRole: true }
     });
     res.json(members);
   } catch (err) {
@@ -188,14 +199,67 @@ app.put('/api/teams/:teamId/members/:userId/role', authenticateToken, async (req
     const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
     if (!team || team.ownerId !== req.user.id) return res.status(403).json({ error: '只有團隊所有權人可以修改權限' });
 
+    let roleName = req.body.role;
+    let roleId = req.body.roleId;
+
+    if (roleId) {
+      const teamRole = await prisma.teamRole.findUnique({ where: { id: roleId } });
+      if (teamRole) roleName = teamRole.name;
+    }
+
     const updated = await prisma.teamMember.update({
       where: { teamId_userId: { teamId: req.params.teamId, userId: req.params.userId } },
-      data: { role: req.body.role },
-      include: { user: { select: { id: true, name: true, email: true } } }
+      data: { 
+        role: roleName,
+        ...(roleId && { roleId })
+      },
+      include: { user: { select: { id: true, name: true, email: true } }, teamRole: true }
     });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Update failed' });
+  }
+});
+
+// --- Custom Roles API ---
+
+app.get('/api/teams/:teamId/roles', authenticateToken, async (req: any, res) => {
+  try {
+    const roles = await prisma.teamRole.findMany({ where: { teamId: req.params.teamId } });
+    res.json(roles);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch roles' });
+  }
+});
+
+app.post('/api/teams/:teamId/roles', authenticateToken, async (req: any, res) => {
+  try {
+    const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
+    if (!team || team.ownerId !== req.user.id) return res.status(403).json({ error: '只有團隊所有權人可以新增角色' });
+
+    const role = await prisma.teamRole.create({
+      data: {
+        name: req.body.name,
+        canEdit: req.body.canEdit ?? true,
+        canInvite: req.body.canInvite ?? false,
+        teamId: req.params.teamId
+      }
+    });
+    res.json(role);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create role' });
+  }
+});
+
+app.delete('/api/teams/:teamId/roles/:roleId', authenticateToken, async (req: any, res) => {
+  try {
+    const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
+    if (!team || team.ownerId !== req.user.id) return res.status(403).json({ error: '只有團隊所有權人可以刪除角色' });
+
+    await prisma.teamRole.delete({ where: { id: req.params.roleId } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete role' });
   }
 });
 
@@ -361,19 +425,19 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     if (format === 'tree') {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提煉出具備豐富層次結構的「樹狀圖」。
 請務必深入分析，最少提煉出 3 到 5 個主概念，每個主概念下須包含多個子概念，並附上詳細說明。
-請為每個主概念加上適合的 Emoji icon，並為最具代表性的概念提供一個英文的圖片生成指令 (imagePrompt)。
+請為最具代表性的概念提供一個英文的圖片生成指令 (imagePrompt)。
 請嚴格以 JSON 格式輸出，結構必須為：
-{ "tree": [ { "icon": "🚀", "concept": "主要概念", "details": "詳細說明", "imagePrompt": "abstract futuristic concept illustration", "subConcepts": [ { "concept": "子概念", "details": "詳細說明", "subConcepts": [] } ] } ] }`;
+{ "tree": [ { "concept": "主要概念", "details": "詳細說明", "imagePrompt": "abstract futuristic concept illustration", "subConcepts": [ { "concept": "子概念", "details": "詳細說明", "subConcepts": [] } ] } ] }`;
     } else if (format === 'summary') {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提取出最重要的 5 到 8 個關鍵重點（Key Takeaways）。
-請詳細解釋每個重點，並為每個重點加上適合的 Emoji icon，同時為重點提供一個英文的圖片生成指令 (imagePrompt) 用於產生示意圖。
+請詳細解釋每個重點，同時為重點提供一個英文的圖片生成指令 (imagePrompt) 用於產生示意圖。
 請嚴格以 JSON 格式輸出，結構必須為：
-{ "summary": [ { "icon": "💡", "point": "重點標題", "explanation": "重點詳細說明", "imagePrompt": "abstract glowing lightbulb 3d render" } ] }`;
+{ "summary": [ { "point": "重點標題", "explanation": "重點詳細說明", "imagePrompt": "abstract glowing lightbulb 3d render" } ] }`;
     } else {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並依照時間先後順序或邏輯順序，提取出具體的「時間軸」或「流程步驟」。
-為每個步驟加上適合的 Emoji icon，並挑選重要步驟提供一個英文的圖片生成指令 (imagePrompt)。
+挑選重要步驟提供一個英文的圖片生成指令 (imagePrompt)。
 請嚴格以 JSON 格式輸出，結構必須為：
-{ "timeline": [ { "icon": "⏳", "time": "時間點", "text": "具體事件描述", "imagePrompt": "minimalist abstract clock hourglass 3d illustration" } ] }`;
+{ "timeline": [ { "time": "時間點", "text": "具體事件描述", "imagePrompt": "minimalist abstract clock hourglass 3d illustration" } ] }`;
     }
 
     if (textContent.length > 15000) {

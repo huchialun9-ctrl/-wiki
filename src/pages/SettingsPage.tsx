@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, Shield, ArrowLeft } from 'lucide-react';
+import { Settings, Shield, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
+  const [teamRoles, setTeamRoles] = useState<any[]>([]);
   const { token, user: currentUser, currentTeam, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
+  
+  // Custom role state
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleCanEdit, setNewRoleCanEdit] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading) {
       if (token && currentTeam) {
         fetchUsers();
+        fetchRoles();
       } else {
         setLoading(false);
       }
@@ -28,27 +34,34 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       setUsers(data);
-      setLoading(false);
     } catch (err) {
       console.error(err);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!token || !currentTeam) return;
-    // Optimistic update
-    setUsers(prev => prev.map(u => u.userId === userId ? { ...u, role: newRole } : u));
-    
+  const fetchRoles = async () => {
+    if (!currentTeam) return;
     try {
-      await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/members/${userId}/role`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ role: newRole })
+      const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/roles`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+      const data = await res.json();
+      setTeamRoles(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, roleId: string) => {
+    try {
+      await fetch(`http://localhost:3000/api/teams/${currentTeam?.id}/members/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ roleId })
+      });
+      fetchUsers();
     } catch (err) {
       console.error(err);
     }
@@ -61,7 +74,7 @@ export default function SettingsPage() {
       const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ email: inviteEmail, role: '企劃' })
+        body: JSON.stringify({ email: inviteEmail, role: teamRoles[0]?.name || '企劃' })
       });
       if (res.ok) {
         setInviteEmail('');
@@ -75,8 +88,35 @@ export default function SettingsPage() {
     }
   };
 
-  const roles = ['管理員', '主持人', '企劃', '剪輯師', '來賓'];
-  
+  const createRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName || !currentTeam || !token) return;
+    try {
+      await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/roles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: newRoleName, canEdit: newRoleCanEdit, canInvite: false })
+      });
+      setNewRoleName('');
+      fetchRoles();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteRole = async (roleId: string) => {
+    if (!confirm('確定要刪除此角色嗎？')) return;
+    try {
+      await fetch(`http://localhost:3000/api/teams/${currentTeam?.id}/roles/${roleId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchRoles();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const isAdmin = currentTeam?.ownerId === currentUser?.id;
 
   if (loading) {
@@ -96,10 +136,50 @@ export default function SettingsPage() {
         <div className="mb-8 flex items-center gap-3 border-b border-notion-border-light dark:border-notion-border-dark pb-6">
           <Settings size={28} />
           <div>
-            <h1 className="text-3xl font-bold">{currentTeam?.name || '團隊設定'}</h1>
-            <p className="text-notion-text-muted-light mt-1">管理當前團隊空間的成員身分與讀寫權限。</p>
+            <h1 className="text-3xl font-bold">設定與權限管理</h1>
+            <p className="text-notion-text-muted-light mt-1">管理您的團隊 {currentTeam?.name} 的設定與客製化角色</p>
           </div>
         </div>
+
+        {/* Roles Management Form */}
+        {isAdmin && (
+          <div className="mb-8 bg-white dark:bg-[#2F2F2F] rounded-xl shadow-sm border border-notion-border-light dark:border-notion-border-dark p-6">
+            <h3 className="font-semibold text-lg mb-2">客製化權限角色 (Custom Roles)</h3>
+            <p className="text-sm text-notion-text-muted-light mb-4">自訂您專屬的職稱與權限，分配給您的團隊成員。</p>
+            
+            <form onSubmit={createRole} className="flex gap-2 mb-6 items-center">
+              <input 
+                type="text" 
+                value={newRoleName}
+                onChange={e => setNewRoleName(e.target.value)}
+                placeholder="輸入新職稱 (例如: 文案總監)"
+                className="flex-1 max-w-xs bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded-lg px-4 py-2 outline-none focus:border-blue-500 text-sm"
+              />
+              <label className="flex items-center gap-2 text-sm cursor-pointer ml-2">
+                <input type="checkbox" checked={newRoleCanEdit} onChange={e => setNewRoleCanEdit(e.target.checked)} className="rounded border-gray-300" />
+                允許編輯懶人包
+              </label>
+              <button type="submit" className="ml-auto bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-lg font-medium hover:opacity-80 transition-opacity flex items-center gap-1 text-sm">
+                <Plus size={16} /> 新增角色
+              </button>
+            </form>
+
+            <div className="flex flex-wrap gap-2">
+              {teamRoles.map(role => (
+                <div key={role.id} className="flex items-center gap-2 bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-full border border-notion-border-light dark:border-notion-border-dark">
+                  <span className="text-sm font-medium">{role.name}</span>
+                  {role.canEdit && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">編輯</span>}
+                  {role.canInvite && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 rounded">管理</span>}
+                  {!role.canInvite && (
+                    <button onClick={() => deleteRole(role.id)} className="text-gray-400 hover:text-red-500 ml-1 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Invite Form */}
         {isAdmin && (
@@ -148,12 +228,12 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                   {isAdmin ? (
                     <select
-                      value={u.role}
+                      value={u.roleId || ''}
                       onChange={(e) => handleRoleChange(u.userId, e.target.value)}
                       className="bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
                     >
-                      {roles.map(r => (
-                        <option key={r} value={r}>{r}</option>
+                      {teamRoles.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
                       ))}
                     </select>
                   ) : (
