@@ -78,6 +78,32 @@ export default function EditorPage() {
   const [format, setFormat] = useState('timeline');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const generateBlocksFromResult = (data: any) => {
+    if (!data.result) return [];
+    if (data.format === 'tree' && data.result.tree) {
+      const buildTree = (nodes: any[]): any[] => {
+        if (!nodes || !Array.isArray(nodes)) return [];
+        return nodes.map(n => ({
+          type: "bulletListItem",
+          content: n.concept + (n.details ? `：${n.details}` : ""),
+          children: buildTree(n.subConcepts)
+        }));
+      };
+      return buildTree(data.result.tree);
+    } else if (data.format === 'summary' && data.result.summary) {
+      return data.result.summary.map((item: any) => ({
+        type: "numberedListItem",
+        content: `${item.point}：${item.explanation}`
+      }));
+    } else if (data.result.timeline) {
+      return data.result.timeline.map((item: any) => ({
+        type: "bulletListItem",
+        content: `[${item.time}] ${item.text}`
+      }));
+    }
+    return [];
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -96,11 +122,8 @@ export default function EditorPage() {
       });
       const data = await response.json();
       
-      if (data.success && data.timeline) {
-        const blocksToInsert = data.timeline.map((item: any) => ({
-          type: "bulletListItem",
-          content: `[${item.time}] ${item.text}`
-        }));
+      if (data.success && data.result) {
+        const blocksToInsert = generateBlocksFromResult(data);
         
         window.dispatchEvent(new CustomEvent('insertBlocks', { 
           detail: [
@@ -134,11 +157,8 @@ export default function EditorPage() {
         });
         const data = await response.json();
         
-        if (data.success && data.timeline) {
-          const blocksToInsert = data.timeline.map((item: any) => ({
-            type: "bulletListItem",
-            content: `[${item.time}] ${item.text}`
-          }));
+        if (data.success && data.result) {
+          const blocksToInsert = generateBlocksFromResult(data);
           
           window.dispatchEvent(new CustomEvent('insertBlocks', { 
             detail: [

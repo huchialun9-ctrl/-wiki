@@ -282,9 +282,9 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     let systemPrompt = '';
     
     if (format === 'tree') {
-      systemPrompt = "You are an expert content analyzer. Read the provided document and extract a hierarchical relationship tree of the main concepts. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"Concept\", \"text\": \"Detailed sub-concepts or relationships\" } ] }";
+      systemPrompt = "You are an expert content analyzer. Read the provided document and extract a hierarchical relationship tree of the main concepts. Output strictly in JSON format matching this structure: { \"tree\": [ { \"concept\": \"Main Concept\", \"details\": \"Explanation\", \"subConcepts\": [ { \"concept\": \"Sub concept\", \"details\": \"\", \"subConcepts\": [] } ] } ] }";
     } else if (format === 'summary') {
-      systemPrompt = "You are an expert content analyzer. Read the provided document and extract the top 5 most important key takeaways. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"Key Point X\", \"text\": \"Explanation\" } ] }";
+      systemPrompt = "You are an expert content analyzer. Read the provided document and extract the top 5 most important key takeaways. Output strictly in JSON format matching this structure: { \"summary\": [ { \"point\": \"Key Point X\", \"explanation\": \"Explanation\" } ] }";
     } else {
       systemPrompt = "You are an expert content analyzer. You will read the provided document and extract a logical timeline or list of key points. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"string (e.g. 00:00 or Point 1)\", \"text\": \"string\" } ] }";
     }
@@ -309,7 +309,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     });
 
     const aiContent = completion.choices[0].message.content;
-    let parsedResult = { timeline: [] };
+    let parsedResult: any = {};
     
     try {
       if (aiContent) parsedResult = JSON.parse(aiContent);
@@ -320,7 +320,8 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     res.json({
       success: true,
       filename: fileName,
-      timeline: parsedResult.timeline || []
+      result: parsedResult,
+      format: format
     });
     
   } catch (error) {
