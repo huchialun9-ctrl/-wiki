@@ -161,22 +161,38 @@ export default function EditorPage() {
       }
       return blocks;
     } 
-    // 3. 時間線 (Timeline)
+    // 3. 時間線 (Timeline) - 同時支援新格式 {title, events[]} 和舊格式直接陣列
     else if (data.format === 'timeline' && data.result.timeline) {
-      const { title, events } = data.result.timeline;
+      const timelineData = data.result.timeline;
       const blocks: any[] = [];
-      
-      if (title) blocks.push({ type: "heading", props: { level: 2, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(title), children: [] });
-      
-      if (events && Array.isArray(events)) {
+
+      // 新格式：{ title, events[] }
+      if (timelineData && !Array.isArray(timelineData) && timelineData.events) {
+        const { title, events } = timelineData;
+        if (title) blocks.push({ type: "heading", props: { level: 2, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(title), children: [] });
         events.forEach((item: any) => {
-          if (item.time || item.title) {
-            blocks.push({ type: "heading", props: { level: 3, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(`📌 [${item.time || ''}] ${item.title || ''}`), children: [] });
+          const label = item.title || item.text || '';
+          if (item.time || label) {
+            blocks.push({ type: "heading", props: { level: 3, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(`📌 [${item.time || ''}] ${label}`), children: [] });
           }
-          if (item.description) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(item.description), children: [] });
+          const desc = item.description || item.text || '';
+          if (desc && desc !== label) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(desc), children: [] });
           if (item.impact) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "orange", textAlignment: "left" }, content: toInline(`⚡ 影響：${item.impact}`), children: [] });
         });
       }
+      // 舊格式：直接是陣列 timeline: [...]
+      else if (Array.isArray(timelineData)) {
+        timelineData.forEach((item: any) => {
+          const label = item.title || item.text || '';
+          if (item.time || label) {
+            blocks.push({ type: "heading", props: { level: 3, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(`📌 [${item.time || ''}] ${label}`), children: [] });
+          }
+          const desc = item.description || (item.text !== label ? item.text : '');
+          if (desc) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(desc), children: [] });
+          if (item.impact) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "orange", textAlignment: "left" }, content: toInline(`⚡ 影響：${item.impact}`), children: [] });
+        });
+      }
+
       return blocks;
     }
     

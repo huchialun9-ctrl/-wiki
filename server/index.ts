@@ -569,7 +569,23 @@ ${timelineFormat}`;
       response_format: { type: "json_object" }
     });
 
-    const resultObj = JSON.parse(jsonStr);
+    // 從 AI 回應讀取內容
+    const rawContent = completion.choices[0]?.message?.content || '';
+    
+    // 清除可能的 markdown code fence（```json ... ```）
+    const jsonStr = rawContent
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .trim();
+
+    let resultObj: any;
+    try {
+      resultObj = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      console.error('JSON parse failed, raw content:', rawContent.substring(0, 500));
+      return res.status(500).json({ error: 'AI 回傳格式錯誤，無法解析 JSON', raw: rawContent.substring(0, 500) });
+    }
     
     const finalFormat = (req.body.format === 'auto' && resultObj.detectedFormat) 
       ? resultObj.detectedFormat 
