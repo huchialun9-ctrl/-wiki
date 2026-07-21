@@ -7,11 +7,11 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { token } = useAuth();
+  const { token, user, currentTeam } = useAuth();
 
   useEffect(() => {
-    if (!token) return;
-    fetch('http://localhost:3000/api/projects', {
+    if (!token || !currentTeam) return;
+    fetch(`http://localhost:3000/api/projects?teamId=${currentTeam.id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -23,7 +23,7 @@ export default function HomePage() {
         console.error(err);
         setLoading(false);
       });
-  }, [token]);
+  }, [token, currentTeam]);
 
   const createProject = async () => {
     try {
@@ -33,7 +33,7 @@ export default function HomePage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title: '無標題懶人包' })
+        body: JSON.stringify({ title: '無標題懶人包', category: 'Drafts', teamId: currentTeam?.id })
       });
       const data = await res.json();
       navigate(`/project/${data.id}`);
@@ -44,7 +44,7 @@ export default function HomePage() {
 
   return (
     <div className="p-12 sm:p-24 max-w-5xl mx-auto w-full">
-      <h1 className="text-4xl font-bold mb-8">Logic Hub 戰情室總覽</h1>
+      <h1 className="text-4xl font-bold mb-8">{user?.name}，你好！</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Create New Card */}
