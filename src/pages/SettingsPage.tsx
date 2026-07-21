@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, Shield, UserCircle, Trash2 } from 'lucide-react';
+import { Settings, Shield } from 'lucide-react';
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);

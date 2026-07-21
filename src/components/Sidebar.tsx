@@ -11,7 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
 
   useEffect(() => {
     if (isOpen && token) {
