@@ -20,7 +20,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { user, logout } = useAuth();
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

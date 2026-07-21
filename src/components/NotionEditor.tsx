@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import type { PartialBlock } from "@blocknote/core";
 import "@blocknote/core/fonts/inter.css";
 import { useEffect, useState, useRef } from "react";
@@ -6,15 +7,19 @@ import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { useAuth } from "../contexts/AuthContext";
 
-export default function NotionEditor({ projectId }: { projectId: string }) {
-  const [initialContent, setInitialContent] = useState<PartialBlock[] | "loading">("loading");
+export default function NotionEditor({ projectId, initialBlocks, readOnly }: { projectId: string, initialBlocks?: any[], readOnly?: boolean }) {
+  const [initialContent, setInitialContent] = useState<PartialBlock[] | "loading">(initialBlocks ? (initialBlocks as PartialBlock[]) : "loading");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { token } = useAuth();
 
   useEffect(() => {
+    if (initialBlocks) {
+      setInitialContent(initialBlocks as PartialBlock[]);
+      return;
+    }
     if (!projectId || !token) return;
     
-    fetch(`http://localhost:3000/api/projects/${projectId}`, {
+    fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -33,7 +38,7 @@ export default function NotionEditor({ projectId }: { projectId: string }) {
         console.error("Failed to load content from DB:", err);
         setInitialContent([{ type: "paragraph", content: "" }]);
       });
-  }, [projectId]);
+  }, [projectId, initialBlocks, token]);
 
   const editor = useCreateBlockNote({
     initialContent: initialContent === "loading" ? undefined : initialContent,
@@ -42,6 +47,7 @@ export default function NotionEditor({ projectId }: { projectId: string }) {
   const [activeBlock, setActiveBlock] = useState<any>(null);
 
   useEffect(() => {
+    if (readOnly) return; // Do not listen to insert events in read-only/staging mode
     const handleInsertBlocks = (event: Event) => {
       const customEvent = event as CustomEvent;
       const blocks = customEvent.detail;
@@ -52,18 +58,20 @@ export default function NotionEditor({ projectId }: { projectId: string }) {
 
     window.addEventListener('insertBlocks', handleInsertBlocks);
     return () => window.removeEventListener('insertBlocks', handleInsertBlocks);
-  }, [editor]);
+  }, [editor, readOnly]);
 
   if (initialContent === "loading") {
     return <div className="text-notion-text-muted-light dark:text-notion-text-muted-dark">載入中...</div>;
   }
 
   return (
-    <div className="notion-editor-wrapper -ml-12 relative group">
+    <div className={`notion-editor-wrapper relative group ${readOnly ? '' : '-ml-12'}`}>
       <BlockNoteView 
         editor={editor} 
         theme="light"
+        editable={!readOnly}
         onSelectionChange={() => {
+          if (readOnly) return;
           try {
             const block = editor.getTextCursorPosition().block;
             setActiveBlock(block);
@@ -72,12 +80,13 @@ export default function NotionEditor({ projectId }: { projectId: string }) {
           }
         }}
         onChange={() => {
+          if (readOnly) return;
           if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
           }
           saveTimeoutRef.current = setTimeout(() => {
             if (!token) return;
-            fetch(`http://localhost:3000/api/projects/${projectId}`, {
+            fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify({ content: JSON.stringify(editor.document) })
@@ -85,7 +94,7 @@ export default function NotionEditor({ projectId }: { projectId: string }) {
           }, 1000);
         }}
       />
-      {activeBlock && (
+      {activeBlock && !readOnly && (
         <button
           className="fixed bottom-12 right-12 bg-blue-500 text-white p-3 rounded-full shadow-2xl hover:bg-blue-600 transition-transform hover:scale-105 flex items-center gap-2 z-40"
           onClick={() => {

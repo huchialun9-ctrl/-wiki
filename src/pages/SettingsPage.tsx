@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Settings, Shield, ArrowLeft, Plus, Trash2 } from 'lucide-react';
@@ -30,7 +31,7 @@ export default function SettingsPage() {
   const fetchUsers = async () => {
     if (!currentTeam) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/members`, {
+      const res = await fetch(`${API_BASE_URL}/api/teams/${currentTeam.id}/members`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -45,7 +46,7 @@ export default function SettingsPage() {
   const fetchRoles = async () => {
     if (!currentTeam) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/roles`, {
+      const res = await fetch(`${API_BASE_URL}/api/teams/${currentTeam.id}/roles`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -57,7 +58,7 @@ export default function SettingsPage() {
 
   const handleRoleChange = async (userId: string, roleId: string) => {
     try {
-      await fetch(`http://localhost:3000/api/teams/${currentTeam?.id}/members/${userId}/role`, {
+      await fetch(`${API_BASE_URL}/api/teams/${currentTeam?.id}/members/${userId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ roleId })
@@ -72,7 +73,7 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!inviteEmail || !currentTeam || !token) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/invite`, {
+      const res = await fetch(`${API_BASE_URL}/api/teams/${currentTeam.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole || teamRoles[0]?.name || '企劃', roleId: inviteRole || teamRoles[0]?.id })
@@ -93,7 +94,7 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!newRoleName || !currentTeam || !token) return;
     try {
-      await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/roles`, {
+      await fetch(`${API_BASE_URL}/api/teams/${currentTeam.id}/roles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name: newRoleName, canEdit: newRoleCanEdit, canInvite: false })
@@ -108,7 +109,7 @@ export default function SettingsPage() {
   const deleteRole = async (roleId: string) => {
     if (!confirm('確定要刪除此角色嗎？')) return;
     try {
-      await fetch(`http://localhost:3000/api/teams/${currentTeam?.id}/roles/${roleId}`, {
+      await fetch(`${API_BASE_URL}/api/teams/${currentTeam?.id}/roles/${roleId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

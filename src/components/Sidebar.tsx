@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, Plus, FileText, Settings } from 'lucide-react';
@@ -17,7 +18,7 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   useEffect(() => {
     if (isOpen && token && currentTeam) {
       // Fetch projects
-      fetch(`http://localhost:3000/api/projects?teamId=${currentTeam.id}`, {
+      fetch(`${API_BASE_URL}/api/projects?teamId=${currentTeam.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -25,7 +26,7 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
         .catch(err => console.error(err));
 
       // Fetch history
-      fetch(`http://localhost:3000/api/user/history`, {
+      fetch(`${API_BASE_URL}/api/user/history`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -132,7 +133,7 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
                 className="opacity-0 group-hover/section:opacity-100 cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark rounded" 
                 onClick={async (e) => { 
                   e.stopPropagation(); 
-                  const res = await fetch('http://localhost:3000/api/projects', {
+                  const res = await fetch(`${API_BASE_URL}/api/projects`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ title: '無標題懶人包', category, teamId: currentTeam?.id })

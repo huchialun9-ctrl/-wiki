@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, FileText, Bot, Users, Zap, LayoutDashboard } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!token || !currentTeam) return;
-    fetch(`http://localhost:3000/api/projects?teamId=${currentTeam.id}`, {
+    fetch(`${API_BASE_URL}/api/projects?teamId=${currentTeam.id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -27,7 +28,7 @@ export default function HomePage() {
 
   const createProject = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/projects', {
+      const res = await fetch(`${API_BASE_URL}/api/projects`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

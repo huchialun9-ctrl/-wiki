@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { X, Send } from 'lucide-react';
@@ -22,7 +23,7 @@ export default function CommentPanel({ projectId, blockId, onClose }: CommentPan
     if (!token) return;
 
     // Load comments
-    fetch(`http://localhost:3000/api/projects/${projectId}/comments`, {
+    fetch(`${API_BASE_URL}/api/projects/${projectId}/comments`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -34,7 +35,7 @@ export default function CommentPanel({ projectId, blockId, onClose }: CommentPan
       .catch(console.error);
 
     // Load users for mentions
-    fetch(`http://localhost:3000/api/users`, {
+    fetch(`${API_BASE_URL}/api/users`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -42,7 +43,7 @@ export default function CommentPanel({ projectId, blockId, onClose }: CommentPan
       .catch(console.error);
 
     // Setup Socket
-    const newSocket = io('http://localhost:3000');
+    const newSocket = io(`${API_BASE_URL}`);
     newSocket.emit('join-project', projectId);
 
     newSocket.on('new-comment', (comment: any) => {
@@ -60,7 +61,7 @@ export default function CommentPanel({ projectId, blockId, onClose }: CommentPan
     if (!newComment.trim() || !token) return;
 
     try {
-      await fetch(`http://localhost:3000/api/projects/${projectId}/comments`, {
+      await fetch(`${API_BASE_URL}/api/projects/${projectId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ blockId, content: newComment })

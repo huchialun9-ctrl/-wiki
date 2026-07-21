@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(JSON.parse(storedUser));
       
       // Fetch teams
-      fetch('http://localhost:3000/api/teams', {
+      fetch(`${API_BASE_URL}/api/teams`, {
         headers: { 'Authorization': `Bearer ${storedToken}` }
       })
       .then(res => res.json())
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
     
     // Fetch teams immediately after login
-    fetch('http://localhost:3000/api/teams', {
+    fetch(`${API_BASE_URL}/api/teams`, {
       headers: { 'Authorization': `Bearer ${newToken}` }
     })
     .then(res => res.json())

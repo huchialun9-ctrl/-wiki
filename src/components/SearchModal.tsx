@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from "../config";
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Search, Zap } from 'lucide-react';
@@ -22,7 +23,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       
       // Fetch user history
       if (token) {
-        fetch('http://localhost:3000/api/user/history', {
+        fetch(`${API_BASE_URL}/api/user/history`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
           .then(res => res.json())

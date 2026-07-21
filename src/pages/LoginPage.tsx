@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,7 +19,7 @@ export default function LoginPage() {
     const body = isLogin ? { email, password } : { email, password, name, role };
     
     try {
-      const res = await fetch(`http://localhost:3000${endpoint}`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

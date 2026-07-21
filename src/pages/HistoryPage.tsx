@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { History, FileText, ArrowLeft, Clock } from 'lucide-react';
@@ -11,7 +12,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (token) {
-      fetch('http://localhost:3000/api/user/history', {
+      fetch(`${API_BASE_URL}/api/user/history`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User as UserIcon, Save, ArrowLeft } from 'lucide-react';
@@ -14,7 +15,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/api/user/profile', {
+      const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name, password: password || undefined })
