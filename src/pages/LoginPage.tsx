@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm p-8 bg-white dark:bg-[#2F2F2F] rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_5px_15px_rgba(0,0,0,0.5)] border border-notion-border-light dark:border-notion-border-dark">
         <div className="flex flex-col items-center mb-8">
           <img src="/blob.png" alt="Logo" className="w-16 h-16 mb-4" />
-          <h1 className="text-2xl font-bold">Logic Hub</h1>
+          <h1 className="text-2xl font-bold">懶人包 Wiki</h1>
           <p className="text-sm text-notion-text-muted-light mt-1">登入以繼續協作</p>
         </div>
 

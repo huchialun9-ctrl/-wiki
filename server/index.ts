@@ -107,14 +107,30 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/users', authenticateToken, async (req, res) => {
+app.get('/api/users', authenticateToken, async (req: any, res) => {
   try {
     const users = await prisma.user.findMany({
       select: { id: true, name: true, role: true }
     });
     res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update user role (admin only ideally, but we'll allow it for now)
+app.put('/api/users/:id/role', authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const user = await prisma.user.update({
+      where: { id },
+      data: { role },
+      select: { id: true, name: true, role: true }
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -253,6 +269,17 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
       return res.status(400).json({ error: 'No file or URL provided' });
     }
 
+    const format = req.body.format || 'timeline';
+    let systemPrompt = '';
+    
+    if (format === 'tree') {
+      systemPrompt = "You are an expert content analyzer. Read the provided document and extract a hierarchical relationship tree of the main concepts. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"Concept\", \"text\": \"Detailed sub-concepts or relationships\" } ] }";
+    } else if (format === 'summary') {
+      systemPrompt = "You are an expert content analyzer. Read the provided document and extract the top 5 most important key takeaways. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"Key Point X\", \"text\": \"Explanation\" } ] }";
+    } else {
+      systemPrompt = "You are an expert content analyzer. You will read the provided document and extract a logical timeline or list of key points. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"string (e.g. 00:00 or Point 1)\", \"text\": \"string\" } ] }";
+    }
+
     if (textContent.length > 15000) {
       textContent = textContent.substring(0, 15000) + '...[truncated]';
     }
@@ -262,11 +289,11 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
       messages: [
         { 
           role: "system", 
-          content: "You are an expert content analyzer. You will read the provided document and extract a logical timeline or list of key points. Output strictly in JSON format matching this structure: { \"timeline\": [ { \"time\": \"string (e.g. 00:00 or Point 1)\", \"text\": \"string\" } ] }"
+          content: systemPrompt
         },
         { 
           role: "user", 
-          content: `Analyze this document and extract a structured timeline of key events or main points:\n\n${textContent}`
+          content: `Analyze this document based on the requested format:\n\n${textContent}`
         }
       ],
       response_format: { type: "json_object" }

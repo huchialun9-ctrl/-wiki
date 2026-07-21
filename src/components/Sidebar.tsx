@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, Plus, FileText } from 'lucide-react';
+import { Search, ChevronDown, Plus, FileText, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -11,7 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
 
   useEffect(() => {
     if (isOpen && token) {
@@ -36,18 +36,32 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
 
   return (
     <aside className="w-64 shrink-0 h-full bg-notion-sidebar-light dark:bg-notion-sidebar-dark border-r border-notion-border-light dark:border-notion-border-dark flex flex-col group relative transition-all">
-      {/* User / Workspace Header */}
-      <div 
-        onClick={() => navigate('/')}
-        className="h-12 px-4 flex items-center justify-between hover:bg-notion-hover-light dark:bg-notion-hover-dark cursor-pointer shrink-0"
-      >
-        <div className="flex items-center gap-2 overflow-hidden">
-          <div className="w-5 h-5 rounded bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">L</div>
-          <span className="text-sm font-medium truncate">Logic Hub Workspace</span>
+      {/* Header */}
+      <div className="p-4 flex items-center gap-3">
+        <div className="w-8 h-8 rounded shadow-sm bg-white overflow-hidden flex items-center justify-center border border-gray-100">
+          <img src="/blob.png" alt="Logo" className="w-full h-full object-cover scale-110" />
+        </div>
+        <div className="flex-1 font-semibold truncate cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 py-1 px-1.5 -ml-1.5 rounded transition-colors flex flex-col text-sm">
+          <div 
+            onClick={() => {
+              navigate('/settings');
+              if (window.innerWidth < 768) toggle();
+            }}
+            className="flex items-center gap-2 px-2 py-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded cursor-pointer transition-colors text-sm"
+          >
+            <div className="w-5 h-5 flex items-center justify-center text-notion-text-muted-light"><Settings size={16} /></div>
+            <span>設定與權限</span>
+          </div>
+
+          <div 
+            className="flex items-center gap-2 px-2 py-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded cursor-pointer transition-colors text-sm text-red-500 mt-2"
+            onClick={logout}
+          ><ChevronDown size={14} className="text-notion-text-muted-light opacity-50" />
+          </div>
         </div>
         <button 
           onClick={(e) => { e.stopPropagation(); toggle(); }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-all text-notion-text-muted-light dark:text-notion-text-muted-dark"
+          className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-all text-notion-text-muted-light dark:text-notion-text-muted-dark"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 17l-5-5 5-5"/><path d="M18 17l-5-5 5-5"/></svg>
         </button>

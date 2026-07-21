@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import HomePage from './pages/HomePage';
 import EditorPage from './pages/EditorPage';
 import LoginPage from './pages/LoginPage';
+import SettingsPage from './pages/SettingsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
