@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-notion-bg-light: #FFFFFF;
+  --color-notion-bg-dark: #191919;
+  --color-notion-sidebar-light: #FBFBFA;
+  --color-notion-sidebar-dark: #202020;
+  
+  --color-notion-text-light: #37352F;
+  --color-notion-text-dark: #FFFFFF;
+  --color-notion-text-muted-light: #9B9A97;
+  --color-notion-text-muted-dark: #9D9D9D;
+  
+  --color-notion-border-light: #E3E2DE;
+  --color-notion-border-dark: #2F2F2F;
+  
+  --color-notion-hover-light: rgba(55, 53, 47, 0.08);
+  --color-notion-hover-dark: rgba(255, 255, 255, 0.08);
+}
+
+:root {
+  background-color: var(--color-notion-bg-light);
+  color: var(--color-notion-text-light);
+  font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    background-color: var(--color-notion-bg-dark);
+    color: var(--color-notion-text-dark);
+    color-scheme: dark;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Base styles for dark mode override via classes */
+.dark body {
+  background-color: var(--color-notion-bg-dark);
+  color: var(--color-notion-text-dark);
+}
+
+/* Custom Scrollbar for Notion Feel */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D3D1CB;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #474C50;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #AEACA6;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #6C7276;
+}
