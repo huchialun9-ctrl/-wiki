@@ -48,13 +48,9 @@ export default function HomePage() {
         
         {/* Hero Section */}
         <div className="relative mb-16 bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row items-center border border-white/10">
-          <div className="absolute inset-0 bg-[url('/hero.png')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[url('/blob.png')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
           
           <div className="relative z-10 p-12 md:w-1/2 text-white">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-200 text-sm font-medium mb-6 backdrop-blur-md">
-              <LayoutDashboard size={16} />
-              戰情室總覽 (Workspace Overview)
-            </div>
             <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">
               {user?.name}，你好！<br/>歡迎來到您的專屬戰情室
             </h1>
@@ -72,9 +68,9 @@ export default function HomePage() {
           
           <div className="relative z-10 md:w-1/2 p-8 flex justify-center items-center">
             <img 
-              src="/hero.png" 
-              alt="AI Logic Dashboard Illustration" 
-              className="w-full max-w-sm rounded-2xl shadow-2xl shadow-purple-900/50 hover:scale-105 transition-transform duration-500 border border-white/10"
+              src="/blob.png" 
+              alt="Dashboard Illustration" 
+              className="w-full max-w-sm hover:scale-105 transition-transform duration-500"
             />
           </div>
         </div>
