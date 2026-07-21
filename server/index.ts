@@ -55,7 +55,12 @@ const upload = multer({ storage: storage });
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+
+// Health check route for browser visitors
+app.get('/', (req, res) => {
+  res.send('🚀 Logic Hub Backend API is running successfully!');
+});
 
 // JWT Authentication Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
