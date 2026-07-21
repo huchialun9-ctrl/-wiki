@@ -485,7 +485,19 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     const format = req.body.format || 'timeline';
     let systemPrompt = '';
     
-    if (format === 'tree') {
+    if (format === 'auto') {
+      systemPrompt = `你是一個專業的內容分析專家。請先分析這段文本的結構特性。
+如果具有強烈的時間順序（如新聞事件發展、歷史），請輸出「時間線(timeline)」格式；
+如果具有明確的階層或分類關係（如公司架構、產品分類），請輸出「樹狀圖(tree)」格式；
+否則請輸出「總覽摘要(summary)」格式。
+
+請在 JSON 中加入 "detectedFormat" 欄位標明你選擇的格式 (timeline, tree, 或 summary)，並將對應的內容放在同名的欄位中。
+如果選擇 tree，必須包含 "tree" 欄位，其值為包含 { "concept", "details", "imagePrompt", "subConcepts" } 的陣列。
+如果選擇 summary，必須包含 "summary" 欄位，其值為包含 { "point", "explanation", "imagePrompt" } 的陣列。
+如果選擇 timeline，必須包含 "timeline" 欄位，其值為包含 { "time", "text", "imagePrompt" } 的陣列。
+請為重要節點提供英文的圖片生成指令 (imagePrompt)。
+請嚴格以 JSON 格式輸出。`;
+    } else if (format === 'tree') {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提煉出具備豐富層次結構的「樹狀圖」。
 請務必深入分析，最少提煉出 3 到 5 個主概念，每個主概念下須包含多個子概念，並附上詳細說明。
 請為最具代表性的概念提供一個英文的圖片生成指令 (imagePrompt)。
@@ -522,25 +534,16 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
       response_format: { type: "json_object" }
     });
 
-    const aiContent = completion.choices[0].message.content;
-    let parsedResult: any = {};
+    const resultObj = JSON.parse(jsonStr);
     
-    try {
-      if (aiContent) parsedResult = JSON.parse(aiContent);
-    } catch (e) {
-      console.error("Failed to parse LLM JSON:", aiContent);
-    }
+    const finalFormat = (req.body.format === 'auto' && resultObj.detectedFormat) 
+      ? resultObj.detectedFormat 
+      : (req.body.format || 'timeline');
 
-    res.json({
-      success: true,
-      filename: fileName,
-      result: parsedResult,
-      format: format
-    });
-    
-  } catch (error) {
-    console.error('Analysis error:', error);
-    res.status(500).json({ error: 'Failed to analyze' });
+    res.json({ success: true, result: resultObj, format: finalFormat, filename: fileName });
+  } catch (err) {
+    console.error('Analyze error:', err);
+    res.status(500).json({ error: 'Analysis failed' });
   }
 });
 

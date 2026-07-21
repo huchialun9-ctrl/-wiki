@@ -84,7 +84,7 @@ export default function EditorPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [format, setFormat] = useState('timeline');
+  const [format, setFormat] = useState('auto');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generateBlocksFromResult = (data: any) => {
@@ -239,6 +239,7 @@ export default function EditorPage() {
               className="bg-transparent text-xs font-semibold border-none outline-none text-notion-text-muted-light dark:text-notion-text-muted-dark hover:text-blue-500 cursor-pointer disabled:opacity-50 appearance-none"
               title="選擇 AI 分析模式"
             >
+              <option value="auto">✨ 自動</option>
               <option value="timeline">時間線</option>
               <option value="tree">樹狀圖</option>
               <option value="summary">摘要</option>
