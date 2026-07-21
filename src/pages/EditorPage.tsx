@@ -81,25 +81,56 @@ export default function EditorPage() {
   const generateBlocksFromResult = (data: any) => {
     if (!data.result) return [];
     if (data.format === 'tree' && data.result.tree) {
-      const buildTree = (nodes: any[]): any[] => {
-        if (!nodes || !Array.isArray(nodes)) return [];
-        return nodes.map(n => ({
-          type: "bulletListItem",
-          content: n.concept + (n.details ? `：${n.details}` : ""),
+      const blocks: any[] = [];
+      data.result.tree.forEach((n: any) => {
+        if (n.imagePrompt) {
+          blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(n.imagePrompt)}?width=800&height=400&nologo=true` } });
+        }
+        const buildTree = (nodes: any[]): any[] => {
+          if (!nodes || !Array.isArray(nodes)) return [];
+          return nodes.map(sub => ({
+            type: "bulletListItem",
+            content: (sub.icon ? `${sub.icon} ` : "") + sub.concept + (sub.details ? `：${sub.details}` : ""),
+            children: buildTree(sub.subConcepts)
+          }));
+        };
+        blocks.push({
+          type: "heading",
+          props: { level: 2 },
+          content: `${n.icon || '📌'} ${n.concept}`,
           children: buildTree(n.subConcepts)
-        }));
-      };
-      return buildTree(data.result.tree);
+        });
+      });
+      return blocks;
     } else if (data.format === 'summary' && data.result.summary) {
-      return data.result.summary.map((item: any) => ({
-        type: "numberedListItem",
-        content: `${item.point}：${item.explanation}`
-      }));
+      return data.result.summary.flatMap((item: any) => {
+        const blocks: any[] = [];
+        if (item.imagePrompt) {
+          blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(item.imagePrompt)}?width=800&height=400&nologo=true` } });
+        }
+        blocks.push({
+          type: "heading",
+          props: { level: 3 },
+          content: `${item.icon || '💡'} ${item.point}`
+        });
+        blocks.push({
+          type: "paragraph",
+          content: item.explanation
+        });
+        return blocks;
+      });
     } else if (data.result.timeline) {
-      return data.result.timeline.map((item: any) => ({
-        type: "bulletListItem",
-        content: `[${item.time}] ${item.text}`
-      }));
+      return data.result.timeline.flatMap((item: any) => {
+        const blocks: any[] = [];
+        if (item.imagePrompt) {
+          blocks.push({ type: "image", props: { url: `https://image.pollinations.ai/prompt/${encodeURIComponent(item.imagePrompt)}?width=800&height=400&nologo=true` } });
+        }
+        blocks.push({
+          type: "bulletListItem",
+          content: `${item.icon || '⏳'} [${item.time}] ${item.text}`
+        });
+        return blocks;
+      });
     }
     return [];
   };

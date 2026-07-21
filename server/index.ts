@@ -165,8 +165,8 @@ app.get('/api/teams/:teamId/members', authenticateToken, async (req: any, res) =
 app.post('/api/teams/:teamId/invite', authenticateToken, async (req: any, res) => {
   try {
     const { email, role } = req.body;
-    const requester = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: req.params.teamId, userId: req.user.id } } });
-    if (!requester || requester.role !== '管理員') return res.status(403).json({ error: 'Only admins can invite' });
+    const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
+    if (!team || team.ownerId !== req.user.id) return res.status(403).json({ error: '只有團隊所有權人可以邀請成員' });
     
     const targetUser = await prisma.user.findUnique({ where: { email } });
     if (!targetUser) return res.status(404).json({ error: 'User not found' });
@@ -185,8 +185,8 @@ app.post('/api/teams/:teamId/invite', authenticateToken, async (req: any, res) =
 
 app.put('/api/teams/:teamId/members/:userId/role', authenticateToken, async (req: any, res) => {
   try {
-    const requester = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: req.params.teamId, userId: req.user.id } } });
-    if (!requester || requester.role !== '管理員') return res.status(403).json({ error: 'Access denied' });
+    const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
+    if (!team || team.ownerId !== req.user.id) return res.status(403).json({ error: '只有團隊所有權人可以修改權限' });
 
     const updated = await prisma.teamMember.update({
       where: { teamId_userId: { teamId: req.params.teamId, userId: req.params.userId } },
@@ -361,17 +361,19 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     if (format === 'tree') {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提煉出具備豐富層次結構的「樹狀圖」。
 請務必深入分析，最少提煉出 3 到 5 個主概念，每個主概念下須包含多個子概念，並附上詳細說明。
+請為每個主概念加上適合的 Emoji icon，並為最具代表性的概念提供一個英文的圖片生成指令 (imagePrompt)。
 請嚴格以 JSON 格式輸出，結構必須為：
-{ "tree": [ { "concept": "主要概念", "details": "詳細說明", "subConcepts": [ { "concept": "子概念", "details": "詳細說明", "subConcepts": [] } ] } ] }`;
+{ "tree": [ { "icon": "🚀", "concept": "主要概念", "details": "詳細說明", "imagePrompt": "abstract futuristic concept illustration", "subConcepts": [ { "concept": "子概念", "details": "詳細說明", "subConcepts": [] } ] } ] }`;
     } else if (format === 'summary') {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並提取出最重要的 5 到 8 個關鍵重點（Key Takeaways）。
-請詳細解釋每個重點，確保摘要具備高度參考價值。
+請詳細解釋每個重點，並為每個重點加上適合的 Emoji icon，同時為重點提供一個英文的圖片生成指令 (imagePrompt) 用於產生示意圖。
 請嚴格以 JSON 格式輸出，結構必須為：
-{ "summary": [ { "point": "重點標題", "explanation": "重點詳細說明" } ] }`;
+{ "summary": [ { "icon": "💡", "point": "重點標題", "explanation": "重點詳細說明", "imagePrompt": "abstract glowing lightbulb 3d render" } ] }`;
     } else {
       systemPrompt = `你是一個專業的內容分析專家。請閱讀提供的文章，並依照時間先後順序或邏輯順序，提取出具體的「時間軸」或「流程步驟」。
+為每個步驟加上適合的 Emoji icon，並挑選重要步驟提供一個英文的圖片生成指令 (imagePrompt)。
 請嚴格以 JSON 格式輸出，結構必須為：
-{ "timeline": [ { "time": "時間點或步驟名稱 (例如: 2023年 或 步驟一)", "text": "具體事件或內容描述" } ] }`;
+{ "timeline": [ { "icon": "⏳", "time": "時間點", "text": "具體事件描述", "imagePrompt": "minimalist abstract clock hourglass 3d illustration" } ] }`;
     }
 
     if (textContent.length > 15000) {

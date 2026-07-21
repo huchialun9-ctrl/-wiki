@@ -77,8 +77,7 @@ export default function SettingsPage() {
 
   const roles = ['管理員', '主持人', '企劃', '剪輯師', '來賓'];
   
-  const currentUserRole = users.find(u => u.userId === currentUser?.id)?.role;
-  const isAdmin = currentUserRole === '管理員';
+  const isAdmin = currentTeam?.ownerId === currentUser?.id;
 
   if (loading) {
     return <div className="p-8 text-center text-notion-text-muted-light">載入中...</div>;
