@@ -587,9 +587,17 @@ ${timelineFormat}`;
       return res.status(500).json({ error: 'AI 回傳格式錯誤，無法解析 JSON', raw: rawContent.substring(0, 500) });
     }
     
-    const finalFormat = (req.body.format === 'auto' && resultObj.detectedFormat) 
-      ? resultObj.detectedFormat 
-      : (req.body.format || 'timeline');
+    // 自動偵測格式：如果 AI 沒有回傳 detectedFormat，從結果的 key 推斷
+    let finalFormat: string;
+    if (req.body.format === 'auto') {
+      finalFormat = resultObj.detectedFormat
+        || (resultObj.timeline ? 'timeline'
+          : resultObj.tree ? 'tree'
+          : resultObj.summary ? 'summary'
+          : 'timeline');
+    } else {
+      finalFormat = req.body.format || 'timeline';
+    }
 
     res.json({ success: true, result: resultObj, format: finalFormat, filename: fileName });
   } catch (err) {

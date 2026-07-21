@@ -100,9 +100,20 @@ export default function EditorPage() {
 
   const generateBlocksFromResult = (data: any) => {
     if (!data.result) return [];
+
+    // 前端也自動偵測格式：如果後端回傳 'auto' 或格式與 result 的 key 不符，從 result 結構推斷
+    let detectedFormat = data.format;
+    if (!detectedFormat || detectedFormat === 'auto') {
+      if (data.result.timeline) detectedFormat = 'timeline';
+      else if (data.result.tree) detectedFormat = 'tree';
+      else if (data.result.summary) detectedFormat = 'summary';
+      else detectedFormat = 'timeline';
+    }
+    // 覆蓋 data.format 供後續判斷使用
+    const fmt = detectedFormat;
     
     // 1. 樹狀圖 (Tree)
-    if (data.format === 'tree' && data.result.tree) {
+    if (fmt === 'tree' && data.result.tree) {
       const { title, overview, nodes } = data.result.tree;
       const blocks: any[] = [];
       
@@ -135,7 +146,7 @@ export default function EditorPage() {
       return blocks;
     } 
     // 2. 懶人包摘要 (Summary)
-    else if (data.format === 'summary' && data.result.summary) {
+    else if (fmt === 'summary' && data.result.summary) {
       const { title, tldr, keyPoints } = data.result.summary;
       const blocks: any[] = [];
       
@@ -162,7 +173,7 @@ export default function EditorPage() {
       return blocks;
     } 
     // 3. 時間線 (Timeline) - 同時支援新格式 {title, events[]} 和舊格式直接陣列
-    else if (data.format === 'timeline' && data.result.timeline) {
+    else if (fmt === 'timeline' && data.result.timeline) {
       const timelineData = data.result.timeline;
       const blocks: any[] = [];
 
