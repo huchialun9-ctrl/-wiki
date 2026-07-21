@@ -137,9 +137,10 @@ app.put('/api/users/:id/role', authenticateToken, async (req: any, res) => {
 // --- Database API Routes ---
 
 // Get all projects
-app.get('/api/projects', authenticateToken, async (req, res) => {
+app.get('/api/projects', authenticateToken, async (req: any, res) => {
   try {
     const projects = await prisma.project.findMany({
+      where: { userId: req.user.id },
       orderBy: { updatedAt: 'desc' }
     });
     res.json(projects);
@@ -149,13 +150,14 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
 });
 
 // Get a single project
-app.get('/api/projects/:id', authenticateToken, async (req, res) => {
+app.get('/api/projects/:id', authenticateToken, async (req: any, res) => {
   try {
     const project = await prisma.project.findUnique({
       where: { id: req.params.id },
       include: { comments: { include: { author: true } } }
     });
     if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (project.userId && project.userId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
     res.json(project);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch project' });
@@ -163,14 +165,15 @@ app.get('/api/projects/:id', authenticateToken, async (req, res) => {
 });
 
 // Create a new project
-app.post('/api/projects', authenticateToken, async (req, res) => {
+app.post('/api/projects', authenticateToken, async (req: any, res) => {
   try {
     const { title, category } = req.body;
     const project = await prisma.project.create({
       data: {
         title: title || '無標題懶人包',
         category: category || 'Drafts',
-        content: JSON.stringify([{ type: "paragraph", content: "" }])
+        content: JSON.stringify([{ type: "paragraph", content: "" }]),
+        userId: req.user.id
       }
     });
     res.json(project);
@@ -180,9 +183,15 @@ app.post('/api/projects', authenticateToken, async (req, res) => {
 });
 
 // Update a project
-app.put('/api/projects/:id', authenticateToken, async (req, res) => {
+app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
   try {
     const { title, content, category } = req.body;
+    
+    const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (existing && existing.userId && existing.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     const project = await prisma.project.update({
       where: { id: req.params.id },
       data: { 
