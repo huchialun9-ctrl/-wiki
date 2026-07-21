@@ -57,10 +57,8 @@ const upload = multer({ storage: storage });
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Health check route for browser visitors
-app.get('/', (req, res) => {
-  res.send('🚀 Logic Hub Backend API is running successfully!');
-});
+// Health check (only when no frontend is present)
+// app.get('/') is handled by static files or the SPA fallback below
 
 // JWT Authentication Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -625,16 +623,17 @@ io.on('connection', (socket) => {
 // ─────────────────────────────────────────────
 const frontendDist = path.join(__dirname, '..', 'dist');
 if (fs.existsSync(frontendDist)) {
+  // 靜態檔案：JS / CSS / 圖片等
   app.use(express.static(frontendDist));
-  // SPA fallback：所有非 /api 路由都回傳 index.html
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) return next();
+  // SPA fallback：只針對非 /api 的 GET 路由回傳 index.html
+  app.use((req: any, res: any, next: any) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
   console.log(`✅ Serving frontend from ${frontendDist}`);
 } else {
   // 僅後端模式：根路由顯示 API 狀態
-  app.get('/', (_, res) => {
+  app.get('/', (_: any, res: any) => {
     res.json({ message: '🚀 Logic Hub Backend API is running successfully!' });
   });
   console.log('ℹ️  No frontend dist found, running in API-only mode');
