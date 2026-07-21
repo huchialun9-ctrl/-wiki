@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: logic-hub
+    runtime: node
+    buildCommand: npm install && npm run build && cd server && npm install && npx prisma generate
+    startCommand: cd server && npx tsx index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
