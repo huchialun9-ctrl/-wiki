@@ -51,40 +51,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fetch(`${API_BASE_URL}/api/teams`, {
         headers: { 'Authorization': `Bearer ${storedToken}` }
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.length > 0) {
+      .then(async res => {
+        if (!res.ok) return;
+        const text = await res.text();
+        if (!text) return;
+        const data = JSON.parse(text);
+        if (Array.isArray(data) && data.length > 0) {
           setTeams(data);
           const saved = data.find((t: any) => t.id === storedTeamId);
           setCurrentTeam(saved || data[0]);
         }
       })
-      .catch(console.error)
+      .catch(console.warn)
       .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = async (newToken: string, newUser: User) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
     
-    // Fetch teams immediately after login
-    fetch(`${API_BASE_URL}/api/teams`, {
-      headers: { 'Authorization': `Bearer ${newToken}` }
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.length > 0) {
-        setTeams(data);
-        setCurrentTeam(data[0]);
-        localStorage.setItem('currentTeamId', data[0].id);
+    // 先導向首頁，再非同步載入 teams（不阻擋登入流程）
+    navigate('/');
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/teams`, {
+        headers: { 'Authorization': `Bearer ${newToken}` }
+      });
+      if (res.ok) {
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          if (Array.isArray(data) && data.length > 0) {
+            setTeams(data);
+            setCurrentTeam(data[0]);
+            localStorage.setItem('currentTeamId', data[0].id);
+          }
+        }
       }
-      navigate('/');
-    });
+    } catch (e) {
+      console.warn('Teams fetch failed after login (non-critical):', e);
+    }
   };
 
   const logout = () => {
