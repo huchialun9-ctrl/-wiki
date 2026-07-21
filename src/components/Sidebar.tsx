@@ -11,18 +11,18 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, teams, currentTeam, setCurrentTeam } = useAuth();
 
   useEffect(() => {
-    if (isOpen && token) {
-      fetch('http://localhost:3000/api/projects', {
+    if (isOpen && token && currentTeam) {
+      fetch(`http://localhost:3000/api/projects?teamId=${currentTeam.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
         .then(data => setProjects(data))
         .catch(err => console.error(err));
     }
-  }, [isOpen, token]);
+  }, [isOpen, token, currentTeam]);
 
   if (!isOpen) return null;
 
@@ -36,17 +36,28 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
 
   return (
     <aside className="w-64 shrink-0 h-full bg-notion-sidebar-light dark:bg-notion-sidebar-dark border-r border-notion-border-light dark:border-notion-border-dark flex flex-col group relative transition-all">
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-          <div className="w-6 h-6 rounded bg-white overflow-hidden flex items-center justify-center border border-gray-100">
+      {/* Header with Team Switcher */}
+      <div className="p-4 flex items-center justify-between border-b border-notion-border-light dark:border-notion-border-dark">
+        <div className="flex items-center gap-2 font-semibold flex-1 min-w-0">
+          <div className="w-6 h-6 rounded bg-white overflow-hidden flex items-center justify-center border border-gray-100 shrink-0">
             <img src="/blob.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="font-semibold text-sm">懶人包 Wiki</span>
+          <select 
+            className="text-sm font-semibold bg-transparent outline-none truncate cursor-pointer w-full text-notion-text-light dark:text-notion-text-dark"
+            value={currentTeam?.id || ''}
+            onChange={(e) => {
+              const t = teams.find((t: any) => t.id === e.target.value);
+              if (t) setCurrentTeam(t);
+            }}
+          >
+            {teams.map((t: any) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
         </div>
         <button 
           onClick={(e) => { e.stopPropagation(); toggle(); }}
-          className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-all text-notion-text-muted-light dark:text-notion-text-muted-dark"
+          className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-all text-notion-text-muted-light dark:text-notion-text-muted-dark ml-2 shrink-0"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 17l-5-5 5-5"/><path d="M18 17l-5-5 5-5"/></svg>
         </button>
@@ -93,10 +104,10 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
                 className="opacity-0 group-hover/section:opacity-100 cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark rounded" 
                 onClick={async (e) => { 
                   e.stopPropagation(); 
-                  const res = await fetch('http://localhost:3000/api/projects', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-                    body: JSON.stringify({ category }) 
+                  const res = await fetch('http://localhost:3000/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ title: '無標題懶人包', category, teamId: currentTeam?.id })
                   });
                   const data = await res.json();
                   navigate(`/project/${data.id}`);

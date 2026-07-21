@@ -4,18 +4,20 @@ import { Settings, Shield } from 'lucide-react';
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, currentTeam } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
 
   useEffect(() => {
-    if (token) {
+    if (token && currentTeam) {
       fetchUsers();
     }
-  }, [token]);
+  }, [token, currentTeam]);
 
   const fetchUsers = async () => {
+    if (!currentTeam) return;
     try {
-      const res = await fetch('http://localhost:3000/api/users', {
+      const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/members`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -28,12 +30,12 @@ export default function SettingsPage() {
   };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!token) return;
+    if (!token || !currentTeam) return;
     // Optimistic update
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    setUsers(prev => prev.map(u => u.userId === userId ? { ...u, role: newRole } : u));
     
     try {
-      await fetch(`http://localhost:3000/api/users/${userId}/role`, {
+      await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/members/${userId}/role`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -43,11 +45,31 @@ export default function SettingsPage() {
       });
     } catch (err) {
       console.error(err);
-      // Revert if failed (omitted for brevity)
     }
   };
 
-  const roles = ['主持人', '企劃', '剪輯師', '來賓'];
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail || !currentTeam || !token) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/teams/${currentTeam.id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email: inviteEmail, role: '企劃' })
+      });
+      if (res.ok) {
+        setInviteEmail('');
+        fetchUsers();
+      } else {
+        const err = await res.json();
+        alert(err.error || '邀請失敗，請確認該用戶已註冊');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const roles = ['管理員', '主持人', '企劃', '剪輯師', '來賓'];
 
   if (loading) {
     return <div className="p-8 text-center text-notion-text-muted-light">載入中...</div>;
@@ -59,9 +81,27 @@ export default function SettingsPage() {
         <div className="mb-8 flex items-center gap-3 border-b border-notion-border-light dark:border-notion-border-dark pb-6">
           <Settings size={28} />
           <div>
-            <h1 className="text-3xl font-bold">團隊設定與權限管理</h1>
-            <p className="text-notion-text-muted-light mt-1">管理「懶人包 Wiki」的團隊成員身分與讀寫權限。</p>
+            <h1 className="text-3xl font-bold">{currentTeam?.name || '團隊設定'}</h1>
+            <p className="text-notion-text-muted-light mt-1">管理當前團隊空間的成員身分與讀寫權限。</p>
           </div>
+        </div>
+
+        {/* Invite Form */}
+        <div className="mb-8 bg-white dark:bg-[#2F2F2F] rounded-xl shadow-sm border border-notion-border-light dark:border-notion-border-dark p-6">
+          <h3 className="font-semibold text-lg mb-2">邀請成員加入 {currentTeam?.name}</h3>
+          <p className="text-sm text-notion-text-muted-light mb-4">輸入已註冊使用者的 Email，即可將他們加入您的團隊。</p>
+          <form onSubmit={handleInvite} className="flex gap-2">
+            <input 
+              type="email" 
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              placeholder="name@example.com"
+              className="flex-1 bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded-lg px-4 py-2 outline-none focus:border-blue-500"
+            />
+            <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+              邀請加入
+            </button>
+          </form>
         </div>
 
         <div className="bg-white dark:bg-[#2F2F2F] rounded-xl shadow-sm border border-notion-border-light dark:border-notion-border-dark overflow-hidden">
@@ -72,26 +112,26 @@ export default function SettingsPage() {
           
           <div className="divide-y divide-notion-border-light dark:divide-notion-border-dark">
             {users.map(u => (
-              <div key={u.id} className="p-5 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+              <div key={u.userId} className="p-5 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center font-bold text-lg">
-                    {u.name.charAt(0).toUpperCase()}
+                    {u.user?.name?.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="font-semibold text-base flex items-center gap-2">
-                      {u.name}
-                      {u.id === currentUser?.id && (
+                      {u.user?.name}
+                      {u.userId === currentUser?.id && (
                         <span className="text-xs bg-blue-100 text-blue-600 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">你</span>
                       )}
                     </div>
-                    <div className="text-xs text-notion-text-muted-light mt-0.5">ID: {u.id.substring(0, 8)}...</div>
+                    <div className="text-xs text-notion-text-muted-light mt-0.5">{u.user?.email}</div>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-4">
                   <select
                     value={u.role}
-                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                    onChange={(e) => handleRoleChange(u.userId, e.target.value)}
                     className="bg-transparent border border-notion-border-light dark:border-notion-border-dark rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
                   >
                     {roles.map(r => (

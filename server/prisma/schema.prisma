@@ -7,6 +7,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Team {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  ownerId   String       @db.ObjectId
+  owner     User         @relation("TeamOwner", fields: [ownerId], references: [id])
+  members   TeamMember[]
+  projects  Project[]
+}
+
+model TeamMember {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  teamId    String    @db.ObjectId
+  userId    String    @db.ObjectId
+  role      String    @default("企劃") // 主持人, 企劃, 剪輯師, 來賓
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+}
+
 model Project {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   title     String    @default("無標題懶人包")
@@ -14,20 +34,21 @@ model Project {
   category  String    @default("Drafts") // Used for grouping in sidebar
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  userId    String?   @db.ObjectId
-  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String?   @db.ObjectId
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   comments  Comment[]
 }
 
 model User {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  email     String    @unique
-  password  String
-  name      String
-  role      String    @default("企劃")
-  createdAt DateTime  @default(now())
-  projects  Project[]
-  comments  Comment[]
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  email        String       @unique
+  password     String
+  name         String
+  role         String       @default("企劃") // Legacy global role (optional now)
+  createdAt    DateTime     @default(now())
+  ownedTeams   Team[]       @relation("TeamOwner")
+  teamMembers  TeamMember[]
+  comments     Comment[]
 }
 
 model Comment {

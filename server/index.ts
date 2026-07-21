@@ -83,6 +83,14 @@ app.post('/api/auth/register', async (req, res) => {
       data: { email, password: hashedPassword, name, role: role || '企劃' }
     });
     
+    // Auto-create default team
+    const team = await prisma.team.create({
+      data: { name: `${name} 的團隊`, ownerId: user.id }
+    });
+    await prisma.teamMember.create({
+      data: { teamId: team.id, userId: user.id, role: '管理員' }
+    });
+    
     const token = jwt.sign({ id: user.id, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
   } catch (err) {
@@ -107,30 +115,69 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/users', authenticateToken, async (req: any, res) => {
+// --- Team API Routes ---
+
+app.get('/api/teams', authenticateToken, async (req: any, res) => {
   try {
-    const users = await prisma.user.findMany({
-      select: { id: true, name: true, role: true }
+    const teams = await prisma.team.findMany({
+      where: { members: { some: { userId: req.user.id } } },
+      include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } }
     });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.json(teams);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch teams' });
   }
 });
 
-// Update user role (admin only ideally, but we'll allow it for now)
-app.put('/api/users/:id/role', authenticateToken, async (req: any, res) => {
+app.get('/api/teams/:teamId/members', authenticateToken, async (req: any, res) => {
   try {
-    const { id } = req.params;
-    const { role } = req.body;
-    const user = await prisma.user.update({
-      where: { id },
-      data: { role },
-      select: { id: true, name: true, role: true }
+    const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: req.params.teamId, userId: req.user.id } } });
+    if (!member) return res.status(403).json({ error: 'Access denied' });
+
+    const members = await prisma.teamMember.findMany({
+      where: { teamId: req.params.teamId },
+      include: { user: { select: { id: true, name: true, email: true } } }
     });
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.json(members);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+app.post('/api/teams/:teamId/invite', authenticateToken, async (req: any, res) => {
+  try {
+    const { email, role } = req.body;
+    const requester = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: req.params.teamId, userId: req.user.id } } });
+    if (!requester || requester.role !== '管理員') return res.status(403).json({ error: 'Only admins can invite' });
+    
+    const targetUser = await prisma.user.findUnique({ where: { email } });
+    if (!targetUser) return res.status(404).json({ error: 'User not found' });
+    
+    const newMember = await prisma.teamMember.upsert({
+      where: { teamId_userId: { teamId: req.params.teamId, userId: targetUser.id } },
+      update: { role: role || '企劃' },
+      create: { teamId: req.params.teamId, userId: targetUser.id, role: role || '企劃' },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    });
+    res.json(newMember);
+  } catch (err) {
+    res.status(500).json({ error: 'Invite failed' });
+  }
+});
+
+app.put('/api/teams/:teamId/members/:userId/role', authenticateToken, async (req: any, res) => {
+  try {
+    const requester = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: req.params.teamId, userId: req.user.id } } });
+    if (!requester || requester.role !== '管理員') return res.status(403).json({ error: 'Access denied' });
+
+    const updated = await prisma.teamMember.update({
+      where: { teamId_userId: { teamId: req.params.teamId, userId: req.params.userId } },
+      data: { role: req.body.role },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed' });
   }
 });
 
@@ -139,8 +186,13 @@ app.put('/api/users/:id/role', authenticateToken, async (req: any, res) => {
 // Get all projects
 app.get('/api/projects', authenticateToken, async (req: any, res) => {
   try {
+    const teamId = req.query.teamId as string;
+    if (!teamId) return res.json([]);
+    const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: req.user.id } } });
+    if (!member) return res.status(403).json({ error: 'Access denied' });
+
     const projects = await prisma.project.findMany({
-      where: { userId: req.user.id },
+      where: { teamId },
       orderBy: { updatedAt: 'desc' }
     });
     res.json(projects);
@@ -157,7 +209,10 @@ app.get('/api/projects/:id', authenticateToken, async (req: any, res) => {
       include: { comments: { include: { author: true } } }
     });
     if (!project) return res.status(404).json({ error: 'Project not found' });
-    if (project.userId && project.userId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+    if (project.teamId) {
+      const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: project.teamId, userId: req.user.id } } });
+      if (!member) return res.status(403).json({ error: 'Access denied' });
+    }
     res.json(project);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch project' });
@@ -167,13 +222,17 @@ app.get('/api/projects/:id', authenticateToken, async (req: any, res) => {
 // Create a new project
 app.post('/api/projects', authenticateToken, async (req: any, res) => {
   try {
-    const { title, category } = req.body;
+    const { title, category, teamId } = req.body;
+    if (!teamId) return res.status(400).json({ error: 'Missing teamId' });
+    const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: req.user.id } } });
+    if (!member) return res.status(403).json({ error: 'Access denied' });
+
     const project = await prisma.project.create({
       data: {
         title: title || '無標題懶人包',
         category: category || 'Drafts',
         content: JSON.stringify([{ type: "paragraph", content: "" }]),
-        userId: req.user.id
+        teamId
       }
     });
     res.json(project);
@@ -188,8 +247,9 @@ app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
     const { title, content, category } = req.body;
     
     const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
-    if (existing && existing.userId && existing.userId !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied' });
+    if (existing && existing.teamId) {
+      const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: existing.teamId, userId: req.user.id } } });
+      if (!member) return res.status(403).json({ error: 'Access denied' });
     }
 
     const project = await prisma.project.update({
@@ -200,7 +260,6 @@ app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
         ...(category && { category }),
       }
     });
-    // Broadcast project update if WebSockets are used for collaborative editing later
     res.json(project);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update project' });
