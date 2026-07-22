@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import SearchModal from './components/SearchModal';
+import ConsentModal from './components/ConsentModal';
 import HomePage from './pages/HomePage';
 import EditorPage from './pages/EditorPage';
 import LoginPage from './pages/LoginPage';
@@ -21,7 +22,6 @@ function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
 
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -38,8 +38,6 @@ function MainLayout() {
       <Sidebar isOpen={sidebarOpen} toggle={() => setSidebarOpen(!sidebarOpen)} />
       
       <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
-
-
         <Outlet context={{ sidebarOpen, setSidebarOpen }} />
       </main>
 
@@ -52,6 +50,7 @@ function MainLayout() {
 function App() {
   return (
     <BrowserRouter>
+      <ConsentModal />
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
