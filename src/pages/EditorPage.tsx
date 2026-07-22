@@ -25,7 +25,7 @@ export default function EditorPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'text' | 'canvas'>('text');
+  const [viewMode, setViewMode] = useState<'text' | 'canvas' | 'split'>('text');
   const [youtubeTime, setYoutubeTime] = useState(0);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
@@ -260,7 +260,8 @@ export default function EditorPage() {
               });
 
               if (!project.graphData) {
-                const nodes = data.result.map((item: any, idx: number) => {
+                const keyPoints = data.result.summary?.keyPoints || [];
+                const nodes = keyPoints.map((item: any, idx: number) => {
                   let parsedTime = 0;
                   if (item.time) {
                     const parts = item.time.split(':');
@@ -272,8 +273,8 @@ export default function EditorPage() {
                     type: 'custom',
                     position: { x: 250, y: idx * 250 + 50 },
                     data: {
-                      title: item.title || item.text,
-                      content: item.description || item.text,
+                      title: item.point || item.title || "重點",
+                      content: item.explanation || item.description || "",
                       timestamp: parsedTime
                     }
                   };
@@ -508,10 +509,10 @@ export default function EditorPage() {
       )}
 
       {/* Editor & AI Staging Area Layout */}
-      <div className={`flex flex-col xl:flex-row gap-6 w-full mx-auto py-12 pb-32 transition-all duration-300 ${liveMode ? 'max-w-5xl px-8 sm:px-16 text-lg' : 'max-w-7xl px-8 sm:px-12 text-base'}`}>
+      <div className={`flex flex-col xl:flex-row gap-6 w-full mx-auto py-12 pb-32 transition-all duration-300 ${liveMode ? 'max-w-5xl px-8 sm:px-16 text-lg' : (viewMode === 'split' ? 'w-full px-8 sm:px-12 text-base' : 'max-w-7xl px-8 sm:px-12 text-base')}`}>
         
        <main className="flex-1 overflow-y-auto relative p-6 flex gap-6 custom-scrollbar bg-gray-50 dark:bg-[#121212] transition-colors">
-        <div className={`flex-1 min-w-0 transition-all duration-500 max-w-4xl mx-auto xl:px-12`}>
+        <div className={`flex-1 min-w-0 transition-all duration-500 ${viewMode === 'split' ? 'w-full mx-auto' : 'max-w-4xl mx-auto xl:px-12'}`}>
           {/* Title Area */}
           <div className="mb-8 group relative no-print">
             <div className="flex items-center gap-4 mb-4">
@@ -568,6 +569,12 @@ export default function EditorPage() {
                 >
                   🧩 畫布模式
                 </button>
+                <button 
+                  onClick={() => setViewMode('split')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'split' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  📖 雙開分屏
+                </button>
               </div>
             )}
             
@@ -588,7 +595,7 @@ export default function EditorPage() {
               initialBlocks={project?.content ? JSON.parse(project.content) : undefined} 
               projectId={project?.id}
             />
-          ) : (
+          ) : viewMode === 'canvas' ? (
             <CanvasEditor 
               initialData={project?.graphData}
               currentTime={youtubeTime}
@@ -602,6 +609,30 @@ export default function EditorPage() {
                 });
               }}
             />
+          ) : (
+            <div className="flex flex-col xl:flex-row w-full gap-8">
+              <div className="w-full xl:w-1/2 overflow-y-auto custom-scrollbar pr-4">
+                <NotionEditor 
+                  initialBlocks={project?.content ? JSON.parse(project.content) : undefined} 
+                  projectId={project?.id}
+                />
+              </div>
+              <div className="w-full xl:w-1/2 border-l border-notion-border-light dark:border-notion-border-dark pl-4 h-[calc(100vh-250px)] sticky top-24">
+                <CanvasEditor 
+                  initialData={project?.graphData}
+                  currentTime={youtubeTime}
+                  onPlayNode={(time) => setSeekTime(time)}
+                  onChange={(data) => {
+                    if (!id || !token) return;
+                    fetch(`${API_BASE_URL}/api/projects/${id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                      body: JSON.stringify({ graphData: data })
+                    });
+                  }}
+                />
+              </div>
+            </div>
           )}
 
           {/* Empty State Guide */}
