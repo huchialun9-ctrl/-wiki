@@ -10,6 +10,7 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import HistoryPage from './pages/HistoryPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -50,8 +51,9 @@ function MainLayout() {
 function App() {
   return (
     <BrowserRouter>
-      <ConsentModal />
-      <AuthProvider>
+      <ThemeProvider>
+        <ConsentModal />
+        <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           
@@ -64,7 +66,8 @@ function App() {
             <Route path="history" element={<HistoryPage />} />
           </Route>
         </Routes>
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
