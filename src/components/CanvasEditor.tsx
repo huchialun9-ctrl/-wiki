@@ -192,7 +192,7 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
   }, [currentTime, nodes, activeNodeId, setCenter, setNodes]);
 
   return (
-    <div className="w-full h-full min-h-screen bg-gray-50 dark:bg-[#1A1A1A] overflow-hidden">
+    <div className="w-full h-full bg-gray-50 dark:bg-[#1A1A1A] overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -202,7 +202,7 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
         nodeTypes={nodeTypes}
         fitView
       >
-        <div className="absolute top-4 left-4 z-10 flex gap-2 shadow-sm rounded-lg bg-white/80 dark:bg-black/50 backdrop-blur-md p-1 border border-gray-200 dark:border-gray-800">
+        <div className="absolute top-4 right-4 z-10 flex gap-2 shadow-sm rounded-lg bg-white/80 dark:bg-black/50 backdrop-blur-md p-1 border border-gray-200 dark:border-gray-800">
           <button onClick={() => onLayout('TB')} className="px-3 py-1.5 text-xs font-semibold rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
             ⬇️ 垂直排版
           </button>

@@ -442,6 +442,14 @@ export default function EditorPage() {
       <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-[#0f0f0f] overflow-hidden">
         {/* Canvas Toolbar */}
         <div className="shrink-0 h-12 flex items-center px-4 gap-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-10">
+          {!sidebarOpen && (
+            <button 
+              onClick={() => setSidebarOpen(true)}
+              className="p-1.5 mr-2 rounded hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark text-notion-text-muted-light dark:text-notion-text-muted-dark transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          )}
           {/* Home button */}
           <button
             onClick={() => navigate('/')}
