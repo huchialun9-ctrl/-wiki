@@ -37,9 +37,8 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
 
   if (!isOpen) return null;
 
-  // Group projects by category
   const groupedProjects = projects.reduce((acc, p) => {
-    const cat = p.category || 'Drafts';
+    const cat = p.isPublished ? `✅ 正式發布 - ${p.category || '未分類'}` : `📝 草稿 - ${p.category || '未分類'}`;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(p);
     return acc;

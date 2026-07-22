@@ -398,7 +398,7 @@ app.post('/api/projects', authenticateToken, async (req: any, res) => {
 // Update a project
 app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
   try {
-    const { title, content, category, isPublished } = req.body;
+    const { title, content, category, isPublished, graphData, youtubeUrl } = req.body;
     
     const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (existing && existing.teamId) {
@@ -412,7 +412,9 @@ app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
         ...(title !== undefined && { title }),
         ...(content !== undefined && { content }),
         ...(category !== undefined && { category }),
-        ...(isPublished !== undefined && { isPublished })
+        ...(isPublished !== undefined && { isPublished }),
+        ...(graphData !== undefined && { graphData }),
+        ...(youtubeUrl !== undefined && { youtubeUrl })
       }
     });
     res.json(project);

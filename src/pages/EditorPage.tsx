@@ -8,6 +8,13 @@ import { useAuth } from '../contexts/AuthContext';
 import CommentPanel from '../components/CommentPanel';
 import { API_BASE_URL } from '../config';
 import { templates } from "../utils/templates";
+import CanvasEditor from '../components/CanvasEditor';
+import YoutubePlayer from '../components/YoutubePlayer';
+
+const getYoutubeId = (url: string) => {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+  return match ? match[1] : null;
+};
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +26,9 @@ export default function EditorPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'text' | 'canvas'>('text');
+  const [youtubeTime, setYoutubeTime] = useState(0);
+  const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -242,6 +252,52 @@ export default function EditorPage() {
             const blocksToInsert = generateBlocksFromResult(data);
             setAiTitle(`🌐 網頁解析: ${data.filename || analyzeUrl}`);
             setAiBlocks(blocksToInsert);
+
+            const ytId = getYoutubeId(analyzeUrl);
+            if (ytId && project) {
+              setProject((prev: any) => ({ ...prev, youtubeUrl: analyzeUrl }));
+              fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ youtubeUrl: analyzeUrl })
+              });
+
+              if (!project.graphData) {
+                const nodes = data.result.map((item: any, idx: number) => {
+                  let parsedTime = 0;
+                  if (item.time) {
+                    const parts = item.time.split(':');
+                    if (parts.length === 2) parsedTime = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                    if (parts.length === 3) parsedTime = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+                  }
+                  return {
+                    id: `node-${idx}`,
+                    type: 'custom',
+                    position: { x: 250, y: idx * 250 + 50 },
+                    data: {
+                      title: item.title || item.text,
+                      content: item.description || item.text,
+                      timestamp: parsedTime
+                    }
+                  };
+                });
+
+                const edges = nodes.slice(0, -1).map((n: any, idx: number) => ({
+                  id: `e-${n.id}-node-${idx + 1}`,
+                  source: n.id,
+                  target: `node-${idx + 1}`,
+                  animated: true
+                }));
+
+                const graphDataStr = JSON.stringify({ nodes, edges });
+                setProject((prev: any) => ({ ...prev, graphData: graphDataStr }));
+                fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ graphData: graphDataStr })
+                });
+              }
+            }
           }
         } catch (error) {
           console.error("Auto URL Analysis failed", error);
@@ -429,31 +485,47 @@ export default function EditorPage() {
                     <input 
                       type="text"
                       defaultValue={project.category || 'Drafts'}
-                    onBlur={(e) => updateCategory(e.target.value)}
-                    className="bg-transparent border-none outline-none w-24 text-sm"
-                  />
+                      onBlur={(e) => updateCategory(e.target.value)}
+                      className="bg-transparent border-none outline-none w-24 focus:w-32 transition-all text-sm"
+                      placeholder="專案分類"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newStatus = !project.isPublished;
+                      setProject({ ...project, isPublished: newStatus });
+                      fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ isPublished: newStatus })
+                      });
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded shadow transition-colors flex items-center gap-1.5 ${
+                      project.isPublished 
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800" 
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+                    }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${project.isPublished ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                    {project.isPublished ? "已正式發布" : "標記為正式"}
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    const newStatus = !project.isPublished;
-                    setProject({ ...project, isPublished: newStatus });
-                    fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                      body: JSON.stringify({ isPublished: newStatus })
-                    });
-                  }}
-                  className={`px-3 py-1 text-xs font-medium rounded shadow transition-colors flex items-center gap-1.5 ${
-                    project.isPublished 
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800" 
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
-                  }`}
-                >
-                  <div className={`w-1.5 h-1.5 rounded-full ${project.isPublished ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                  {project.isPublished ? "已正式發布" : "標記為正式"}
-                </button>
-              </div>
               )}
+            </div>
+            
+            <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit mb-4">
+              <button 
+                onClick={() => setViewMode('text')}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'text' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              >
+                📝 文字模式
+              </button>
+              <button 
+                onClick={() => setViewMode('canvas')}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'canvas' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              >
+                🧩 畫布模式
+              </button>
             </div>
             
             {project ? (
@@ -468,6 +540,27 @@ export default function EditorPage() {
             )}
           </div>
           
+          {viewMode === 'text' ? (
+            <NotionEditor 
+              initialBlocks={project?.content ? JSON.parse(project.content) : undefined} 
+              projectId={project?.id}
+            />
+          ) : (
+            <CanvasEditor 
+              initialData={project?.graphData}
+              currentTime={youtubeTime}
+              onPlayNode={(time) => setSeekTime(time)}
+              onChange={(data) => {
+                if (!id || !token) return;
+                fetch(`${API_BASE_URL}/api/projects/${id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ graphData: data })
+                });
+              }}
+            />
+          )}
+
           {/* Empty State Guide */}
           {!isUploading && project && (!project.content || project.content === '[]' || project.content.includes('"content":""')) && !aiBlocks && (
             <div className="mb-8">
@@ -520,8 +613,6 @@ export default function EditorPage() {
               <p className="text-sm text-blue-500/70 mt-2">即將產生精美的分析報告</p>
             </div>
           )}
-
-          <NotionEditor projectId={id || 'default'} />
         </div>
 
         {/* Right: AI Staging Area */}
@@ -599,6 +690,11 @@ export default function EditorPage() {
           onClose={() => setCommentTarget(null)}
         />
       )}
+      <YoutubePlayer 
+        videoId={project?.youtubeUrl ? (getYoutubeId(project.youtubeUrl) || "") : ""} 
+        seekToTime={seekTime} 
+        onTimeUpdate={setYoutubeTime} 
+      />
     </>
   );
 }

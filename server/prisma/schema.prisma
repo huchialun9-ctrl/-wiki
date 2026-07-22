@@ -45,8 +45,11 @@ model TeamMember {
 model Project {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   title     String    @default("無標題懶人包")
-  content   String    @default("[]") // JSON string of blocks
-  category  String    @default("Drafts") // Used for grouping in sidebar
+  content   String?
+  graphData String?
+  youtubeUrl String?
+  isPublished Boolean @default(false)
+  category  String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   teamId    String?   @db.ObjectId
