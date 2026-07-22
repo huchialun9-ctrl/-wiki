@@ -85,6 +85,8 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
       content: node.content || node.data?.content || node.description || node.data?.description || node.details || node.data?.details || "暫無內容",
       quotes: node.quotes || node.data?.quotes || [],
       details: Array.isArray(node.details) ? node.details : (Array.isArray(node.subConcepts) ? node.subConcepts.map((sc: any) => typeof sc === 'string' ? sc : `${sc.concept || ''}: ${sc.details || ''}`) : []),
+      time: node.time || node.data?.time,
+      impact: node.impact || node.data?.impact,
       timestamp: node.timestamp || node.data?.timestamp,
       onPlay: onPlayNode 
     };

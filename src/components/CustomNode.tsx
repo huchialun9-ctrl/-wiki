@@ -13,6 +13,13 @@ export default function CustomNode({ data }: any) {
     <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl p-5 w-80 transition-all hover:border-blue-400 dark:hover:border-blue-500">
       <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-blue-500 border-2 border-white" />
       
+      {/* Time/Sequence badge */}
+      {data.time && (
+        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 mb-2">
+          ⏱️ {data.time}
+        </span>
+      )}
+
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-bold text-sm text-gray-800 dark:text-gray-100 flex-1 pr-2">{data.title || "無標題"}</h3>
         {data.timestamp !== undefined && (
@@ -32,6 +39,13 @@ export default function CustomNode({ data }: any) {
       <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
         {data.content || "暫無摘要內容..."}
       </div>
+
+      {/* Timeline Impact Block */}
+      {data.impact && (
+        <div className="text-xs p-2.5 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 text-orange-800 dark:text-orange-300 mb-3 font-medium">
+          ⚡ 影響：{data.impact}
+        </div>
+      )}
 
       {(quotes.length > 0 || details.length > 0) && (
         <div className="border-t border-gray-100 dark:border-gray-700 pt-2 mt-2">
