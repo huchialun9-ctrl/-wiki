@@ -8,7 +8,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('企劃');
   const [error, setError] = useState('');
   const { login } = useAuth();
 
@@ -17,7 +16,7 @@ export default function LoginPage() {
     setError('');
     
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const body = isLogin ? { email, password } : { email, password, name, role };
+    const body = isLogin ? { email, password } : { email, password, name };
     
     try {
       const data = await safeFetch(`${API_BASE_URL}${endpoint}`, {
@@ -50,7 +49,6 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {!isLogin && (
-            <>
               <input 
                 type="text" 
                 placeholder="顯示名稱 (例如：王大明)" 
@@ -59,17 +57,6 @@ export default function LoginPage() {
                 required
                 className="w-full p-2 rounded border border-notion-border-light dark:border-notion-border-dark bg-transparent focus:outline-none focus:border-blue-500 transition-colors text-sm"
               />
-              <select 
-                value={role}
-                onChange={e => setRole(e.target.value)}
-                className="w-full p-2 rounded border border-notion-border-light dark:border-notion-border-dark bg-transparent focus:outline-none focus:border-blue-500 transition-colors text-sm"
-              >
-                <option value="主持人">主持人</option>
-                <option value="企劃">企劃</option>
-                <option value="剪輯師">剪輯師</option>
-                <option value="來賓">來賓</option>
-              </select>
-            </>
           )}
           
           <input 

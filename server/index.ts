@@ -78,13 +78,18 @@ const authenticateToken = (req: any, res: any, next: any) => {
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body;
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return res.status(400).json({ error: 'User already exists' });
-    
+    const { email, password, name } = req.body;
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: '使用者已存在' });
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, name, role: role || '企劃' }
+      data: {
+        email,
+        password: hashedPassword,
+        name
+      }
     });
     
     // Auto-create default team and roles
@@ -393,7 +398,7 @@ app.post('/api/projects', authenticateToken, async (req: any, res) => {
 // Update a project
 app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
   try {
-    const { title, content, category } = req.body;
+    const { title, content, category, isPublished } = req.body;
     
     const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (existing && existing.teamId) {
@@ -404,9 +409,10 @@ app.put('/api/projects/:id', authenticateToken, async (req: any, res) => {
     const project = await prisma.project.update({
       where: { id: req.params.id },
       data: { 
-        ...(title && { title }),
-        ...(content && { content }),
-        ...(category && { category }),
+        ...(title !== undefined && { title }),
+        ...(content !== undefined && { content }),
+        ...(category !== undefined && { category }),
+        ...(isPublished !== undefined && { isPublished })
       }
     });
     res.json(project);

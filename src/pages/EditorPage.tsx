@@ -423,17 +423,36 @@ export default function EditorPage() {
               </div>
               
               {project && (
-                <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark w-fit">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                  <input 
-                    type="text"
-                    defaultValue={project.category || 'Drafts'}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark w-fit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <input 
+                      type="text"
+                      defaultValue={project.category || 'Drafts'}
                     onBlur={(e) => updateCategory(e.target.value)}
-                    className="bg-transparent border-none outline-none w-32 focus:w-48 transition-all"
-                    placeholder="專案分類 (資料夾)"
-                    title="編輯專案所屬資料夾"
+                    className="bg-transparent border-none outline-none w-24 text-sm"
                   />
                 </div>
+                <button
+                  onClick={() => {
+                    const newStatus = !project.isPublished;
+                    setProject({ ...project, isPublished: newStatus });
+                    fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                      body: JSON.stringify({ isPublished: newStatus })
+                    });
+                  }}
+                  className={`px-3 py-1 text-xs font-medium rounded shadow transition-colors flex items-center gap-1.5 ${
+                    project.isPublished 
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800" 
+                      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${project.isPublished ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                  {project.isPublished ? "已正式發布" : "標記為正式"}
+                </button>
+              </div>
               )}
             </div>
             
@@ -480,7 +499,10 @@ export default function EditorPage() {
                       }}
                       className="p-5 border border-notion-border-light dark:border-notion-border-dark rounded-xl cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all group bg-white dark:bg-[#1E1E1E]"
                     >
-                      <h4 className="font-bold text-lg mb-2 group-hover:text-blue-500 transition-colors">{tpl.title}</h4>
+                      <h4 className="font-bold text-lg mb-2 group-hover:text-blue-500 transition-colors flex items-center">
+                        <img src="/blob.png" alt="icon" className="w-5 h-5 inline-block mr-2 rounded" />
+                        {tpl.title}
+                      </h4>
                       <p className="text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark leading-relaxed">
                         {tpl.description}
                       </p>
