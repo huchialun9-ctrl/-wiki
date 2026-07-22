@@ -460,9 +460,9 @@ app.get('/api/projects/:id/comments', authenticateToken, async (req, res) => {
 
 // --- AI Analysis API ---
 
-app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, res) => {
+app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: any, res) => {
   try {
-    const { url } = req.body;
+    const { url, format: requestedFormat } = req.body;
     let textContent = '';
     let fileName = '';
 
@@ -538,14 +538,28 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
       return res.status(400).json({ error: 'No file or URL provided' });
     }
 
-    const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點詳細說明 (字數需超過 150 字，盡可能詳盡解說上下文、來龍去脈與結論，請勿精簡)", "imagePrompt": "abstract glowing lightbulb 3d render", "quotes": ["擷取的重要原文名言或金句一", "擷取的重要原文名言或金句二"], "details": ["細節補充1：數據或案例", "細節補充2：延伸影響", "細節補充3：具體行動建議", "細節補充4"] } ] } }`;
+    const finalFormat = requestedFormat || 'summary';
+    let systemPrompt = '';
 
-    const systemPrompt = `你是一個頂級的商業顧問、企劃大師與資料分析專家。請閱讀提供的文章，並提取出所有關鍵的資訊，產生一份「極度完整且詳盡」的高階摘要報告（Summary）。
+    if (finalFormat === 'timeline') {
+      systemPrompt = `You are a professional content parser. Analyze the given text and extract a chronological timeline of events or a step-by-step logical sequence.
+Please strictly output in JSON format:
+{ "timeline": { "title": "Main Title", "events": [ { "time": "Timestamp or Date if available (or sequence number)", "title": "Event Title", "description": "Detailed description of what happened", "impact": "Impact or significance of this event" } ] } }`;
+    } else if (finalFormat === 'tree') {
+      systemPrompt = `You are an expert structural analyst. Analyze the given text and break it down into a logical tree or mind map structure.
+Please strictly output in JSON format:
+{ "tree": { "title": "Main Topic", "overview": "Brief overview of the topic", "nodes": [ { "concept": "Primary Concept", "details": "Explanation of the concept", "subConcepts": [ { "concept": "Sub-concept", "details": "Details of the sub-concept" } ] } ] } }`;
+    } else {
+      // Default to summary
+      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點詳細說明 (字數需超過 150 字，盡可能詳盡解說上下文、來龍去脈與結論，請勿精簡)", "imagePrompt": "abstract glowing lightbulb 3d render", "quotes": ["擷取的重要原文名言或金句一", "擷取的重要原文名言或金句二"], "details": ["細節補充1：數據或案例", "細節補充2：延伸影響", "細節補充3：具體行動建議", "細節補充4"] } ] } }`;
+
+      systemPrompt = `你是一個頂級的商業顧問、企劃大師與資料分析專家。請閱讀提供的文章，並提取出所有關鍵的資訊，產生一份「極度完整且詳盡」的高階摘要報告（Summary）。
 請注意，這份報告將提供給專業團隊使用，內容「絕對不能太少」，請盡量將原文中的洞察、案例、數據與前後脈絡完整保留，並進行深度解析。
 請提供主標題(title)與一句話速讀(tldr)。報告必須包含至少 3 到 5 個 keyPoints。每個重點(keyPoints)都需要有深入的說明(explanation，至少 150 字以上)、從原文擷取的多句金句(quotes)以及豐富的條列式細節(details)，確保不遺漏任何重要資訊。
 同時為每個重點提供一個英文的圖片生成指令 (imagePrompt) 用於產生示意圖。
 請嚴格以 JSON 格式輸出，結構必須為：
 ${summaryFormat}`;
+    }
 
     if (textContent.length > 15000) {
       textContent = textContent.substring(0, 15000) + '...[truncated]';
@@ -583,9 +597,6 @@ ${summaryFormat}`;
       console.error('JSON parse failed, raw content:', rawContent.substring(0, 500));
       return res.status(500).json({ error: 'AI 回傳格式錯誤，無法解析 JSON', raw: rawContent.substring(0, 500) });
     }
-    
-    // 統一回傳 summary 格式
-    const finalFormat = 'summary';
 
     res.json({ success: true, result: resultObj, format: finalFormat, filename: fileName });
   } catch (err) {
