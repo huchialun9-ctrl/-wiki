@@ -16,23 +16,30 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
   const { token, user, logout, teams, currentTeam, setCurrentTeam } = useAuth();
 
   useEffect(() => {
-    if (isOpen && token && currentTeam) {
-      // Fetch projects
-      fetch(`${API_BASE_URL}/api/projects?teamId=${currentTeam.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setProjects(data))
-        .catch(err => console.error(err));
+    const fetchProjects = () => {
+      if (isOpen && token && currentTeam) {
+        // Fetch projects
+        fetch(`${API_BASE_URL}/api/projects?teamId=${currentTeam.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => setProjects(data))
+          .catch(err => console.error(err));
 
-      // Fetch history
-      fetch(`${API_BASE_URL}/api/user/history`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setHistory(data))
-        .catch(err => console.error(err));
-    }
+        // Fetch history
+        fetch(`${API_BASE_URL}/api/user/history`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => setHistory(data))
+          .catch(err => console.error(err));
+      }
+    };
+    
+    fetchProjects();
+    
+    window.addEventListener('refreshProjects', fetchProjects);
+    return () => window.removeEventListener('refreshProjects', fetchProjects);
   }, [isOpen, token, currentTeam]);
 
   if (!isOpen) return null;
