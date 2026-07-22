@@ -538,10 +538,11 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
       return res.status(400).json({ error: 'No file or URL provided' });
     }
 
-    const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點詳細說明(請盡量詳盡，涵蓋完整脈絡)", "imagePrompt": "abstract glowing lightbulb 3d render", "quotes": ["擷取的原文名言或金句"], "details": ["細節補充1", "細節補充2", "細節補充3"] } ] } }`;
+    const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點詳細說明 (字數需超過 150 字，盡可能詳盡解說上下文、來龍去脈與結論，請勿精簡)", "imagePrompt": "abstract glowing lightbulb 3d render", "quotes": ["擷取的重要原文名言或金句一", "擷取的重要原文名言或金句二"], "details": ["細節補充1：數據或案例", "細節補充2：延伸影響", "細節補充3：具體行動建議", "細節補充4"] } ] } }`;
 
-    const systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請閱讀提供的文章，並提取出所有關鍵的資訊，產生一份「極度完整且詳盡」的高階摘要報告（Summary）。
-請提供主標題(title)與一句話速讀(tldr)。每個重點(keyPoints)都需要有深入的說明(explanation)、從原文擷取的金句(quotes)以及豐富的條列式細節(details)，確保不遺漏任何重要資訊。
+    const systemPrompt = `你是一個頂級的商業顧問、企劃大師與資料分析專家。請閱讀提供的文章，並提取出所有關鍵的資訊，產生一份「極度完整且詳盡」的高階摘要報告（Summary）。
+請注意，這份報告將提供給專業團隊使用，內容「絕對不能太少」，請盡量將原文中的洞察、案例、數據與前後脈絡完整保留，並進行深度解析。
+請提供主標題(title)與一句話速讀(tldr)。報告必須包含至少 3 到 5 個 keyPoints。每個重點(keyPoints)都需要有深入的說明(explanation，至少 150 字以上)、從原文擷取的多句金句(quotes)以及豐富的條列式細節(details)，確保不遺漏任何重要資訊。
 同時為每個重點提供一個英文的圖片生成指令 (imagePrompt) 用於產生示意圖。
 請嚴格以 JSON 格式輸出，結構必須為：
 ${summaryFormat}`;

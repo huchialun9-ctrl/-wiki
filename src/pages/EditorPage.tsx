@@ -333,6 +333,41 @@ export default function EditorPage() {
         const blocksToInsert = generateBlocksFromResult(data);
         setAiTitle(`📄 檔案分析: ${file.name}`);
         setAiBlocks(blocksToInsert);
+        
+        // Auto generate canvas nodes layout for uploaded file
+        if (project && !project.graphData) {
+          const nodes = data.result.summary?.keyPoints ? data.result.summary.keyPoints.map((item: any, idx: number) => {
+            return {
+              id: `node-${idx}`,
+              type: 'custom',
+              position: { x: 250, y: idx * 250 + 50 },
+              data: {
+                title: item.point || "重點",
+                content: item.explanation || "",
+              }
+            };
+          }) : [{
+            id: 'node-0',
+            type: 'custom',
+            position: { x: 250, y: 50 },
+            data: { title: "分析完成", content: "請切換文字模式查看完整細節" }
+          }];
+
+          const edges = nodes.length > 1 ? nodes.slice(0, -1).map((n: any, idx: number) => ({
+            id: `e-${n.id}-node-${idx + 1}`,
+            source: n.id,
+            target: `node-${idx + 1}`,
+            animated: true
+          })) : [];
+
+          const graphDataStr = JSON.stringify({ nodes, edges });
+          setProject((prev: any) => ({ ...prev, graphData: graphDataStr }));
+          fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ graphData: graphDataStr })
+          });
+        }
       }
     } catch (error) {
       console.error("Upload failed", error);
@@ -661,7 +696,7 @@ export default function EditorPage() {
             
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
               <ErrorBoundary>
-                <NotionEditor key={aiTitle} projectId="ai-staging" initialBlocks={aiBlocks} readOnly={true} />
+                <NotionEditor key={aiTitle} projectId="ai-staging" initialBlocks={aiBlocks} readOnly={false} />
               </ErrorBoundary>
             </div>
           </div>

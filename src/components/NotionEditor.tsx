@@ -74,7 +74,7 @@ export default function NotionEditor({ projectId, initialBlocks, readOnly }: { p
   }, [editor, readOnly]);
 
   useEffect(() => {
-    if (!projectId || readOnly || !user) return;
+    if (!token || !projectId || readOnly || !user || projectId === 'ai-staging') return;
     
     // Connect to Socket.io
     const socket = io(API_BASE_URL);
@@ -107,7 +107,7 @@ export default function NotionEditor({ projectId, initialBlocks, readOnly }: { p
   }, [projectId, readOnly, user, editor]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (readOnly || !socketRef.current || !user || !editorRef.current) return;
+    if (readOnly || !socketRef.current || !user || !editorRef.current || projectId === 'ai-staging') return;
     const rect = editorRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -123,7 +123,7 @@ export default function NotionEditor({ projectId, initialBlocks, readOnly }: { p
   };
 
   const handleMouseLeave = () => {
-    if (readOnly || !socketRef.current || !user) return;
+    if (readOnly || !socketRef.current || !user || projectId === 'ai-staging') return;
     socketRef.current.emit('cursor-leave', { projectId, userId: user.id });
   };
 
@@ -171,7 +171,7 @@ export default function NotionEditor({ projectId, initialBlocks, readOnly }: { p
           }
         }}
         onChange={() => {
-          if (readOnly) return;
+          if (readOnly || projectId === 'ai-staging') return;
           
           // Emit to other clients immediately
           if (socketRef.current) {
