@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "../config";
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, Plus, FileText, Settings } from 'lucide-react';
+import { Search, ChevronDown, Plus, FileText, Settings, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -80,7 +80,17 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
         </button>
       </div>
 
-      <div className="px-3 mb-2">
+      <div className="px-3 mb-2 flex flex-col gap-1">
+        <div 
+          onClick={() => {
+            navigate('/');
+            if (window.innerWidth < 768) toggle();
+          }}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm font-medium text-notion-text-light dark:text-notion-text-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors cursor-pointer"
+        >
+          <Home size={16} />
+          <span>前往首頁</span>
+        </div>
         <div 
           onClick={() => {
             navigate('/settings');
