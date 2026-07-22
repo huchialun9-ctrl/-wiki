@@ -15,6 +15,37 @@ const getYoutubeId = (url: string) => {
   return match ? match[1] : null;
 };
 
+const getSocialPlatforms = (contentStr: string) => {
+  if (!contentStr) return [];
+  try {
+    const blocks = JSON.parse(contentStr);
+    const platforms: { name: string; content: string }[] = [];
+    let currentPlatform: any = null;
+    
+    blocks.forEach((b: any) => {
+      const text = b.content?.map((c: any) => c.text || '').join('') || '';
+      if (b.type === 'heading' && b.props?.level === 3 && text.startsWith('📢')) {
+        if (currentPlatform) {
+          platforms.push(currentPlatform);
+        }
+        currentPlatform = { name: text.replace('📢', '').trim(), content: '' };
+      } else if (currentPlatform) {
+        if (b.type === 'paragraph') {
+          currentPlatform.content += text + '\n';
+        } else if (b.type === 'bulletListItem') {
+          currentPlatform.content += '• ' + text + '\n';
+        }
+      }
+    });
+    if (currentPlatform) {
+      platforms.push(currentPlatform);
+    }
+    return platforms;
+  } catch {
+    return [];
+  }
+};
+
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -34,6 +65,8 @@ export default function EditorPage() {
   
   
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
+    const [activeTab, setActiveTab] = useState(0);
+  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -601,6 +634,59 @@ export default function EditorPage() {
           )}
         </div>
       </main>
+
+       {/* Social Copy Panel Column */}
+       {project?.content && getSocialPlatforms(project.content).length > 0 && (() => {
+         const platforms = getSocialPlatforms(project.content);
+         const currentPlatform = platforms[activeTab] || platforms[0];
+         return (
+           <div className="w-full xl:w-[350px] shrink-0 bg-white dark:bg-[#202020] border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-lg flex flex-col h-[calc(100vh-100px)] sticky top-6 no-print">
+             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+               <span className="text-xl">⚡</span>
+               <h3 className="font-bold text-gray-800 dark:text-gray-100">社群一鍵發佈助手</h3>
+             </div>
+             
+             {/* Tab Headers */}
+             <div className="flex gap-1 overflow-x-auto mb-4 border-b border-gray-100 dark:border-gray-800 pb-2 scrollbar-none">
+               {platforms.map((p: any, idx: number) => (
+                 <button
+                   key={p.name}
+                   onClick={() => { setActiveTab(idx); setCopied(false); }}
+                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+                     activeTab === idx 
+                       ? 'bg-blue-500 text-white shadow' 
+                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                   }`}
+                 >
+                   {p.name}
+                 </button>
+               ))}
+             </div>
+             
+             {/* Content area */}
+             <div className="flex-1 overflow-y-auto p-4 rounded-xl font-mono text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap select-all leading-relaxed bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800/50 mb-4 custom-scrollbar">
+               {currentPlatform ? currentPlatform.content : '暫無文案內容'}
+             </div>
+             
+             {/* Action area */}
+             <button
+               onClick={() => {
+                 const content = currentPlatform?.content || '';
+                 navigator.clipboard.writeText(content);
+                 setCopied(true);
+                 setTimeout(() => setCopied(false), 2000);
+               }}
+               className={`w-full py-3 rounded-xl text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 text-white border-none ${
+                 copied 
+                   ? 'bg-green-600 hover:bg-green-700' 
+                   : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700'
+               }`}
+             >
+               {copied ? '✅ 已複製文案！' : '📋 複製此平台文案'}
+             </button>
+           </div>
+         );
+       })()}
 
 
         {/* QR Code Modal */}
