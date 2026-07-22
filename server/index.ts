@@ -637,16 +637,26 @@ app.post('/api/generate-graph', authenticateToken, async (req, res) => {
     const { content } = req.body;
     if (!content) return res.status(400).json({ error: 'No content provided' });
     
-    // Parse the blocks to extract plain text
+    // Parse the blocks recursively to extract all plain text
     let plainText = '';
     try {
       const blocks = JSON.parse(content);
-      plainText = blocks.map((b: any) => {
-        if (b.content && Array.isArray(b.content)) {
-          return b.content.map((c: any) => c.text).join('');
-        }
-        return '';
-      }).join('\n');
+      const extractText = (nodes: any[]): string => {
+        if (!Array.isArray(nodes)) return '';
+        return nodes.map((b: any) => {
+          let text = '';
+          if (b.content) {
+            if (Array.isArray(b.content)) {
+              text = b.content.map((c: any) => c.text || '').join('');
+            } else if (typeof b.content === 'string') {
+              text = b.content;
+            }
+          }
+          const childrenText = b.children ? extractText(b.children) : '';
+          return text + (childrenText ? '\n' + childrenText : '');
+        }).filter(Boolean).join('\n');
+      };
+      plainText = extractText(blocks);
     } catch {
       plainText = content;
     }

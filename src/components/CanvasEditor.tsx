@@ -81,10 +81,10 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
   const rawNodes = parsedData.nodes.map((node: any) => {
     const nodeData = { 
       ...(node.data || {}), 
-      title: node.title || node.data?.title,
-      content: node.content || node.data?.content,
-      quotes: node.quotes || node.data?.quotes,
-      details: node.details || node.data?.details,
+      title: node.title || node.data?.title || node.label || node.data?.label || node.concept || node.data?.concept || "無標題",
+      content: node.content || node.data?.content || node.description || node.data?.description || node.details || node.data?.details || "暫無內容",
+      quotes: node.quotes || node.data?.quotes || [],
+      details: Array.isArray(node.details) ? node.details : (Array.isArray(node.subConcepts) ? node.subConcepts.map((sc: any) => typeof sc === 'string' ? sc : `${sc.concept || ''}: ${sc.details || ''}`) : []),
       timestamp: node.timestamp || node.data?.timestamp,
       onPlay: onPlayNode 
     };
