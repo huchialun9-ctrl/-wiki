@@ -552,17 +552,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
       });
       $('br').replaceWith('\\n');
 
-      // 提取文字並進行正則壓縮 (Extract and normalize text)
-      textContent = $('body').text()
-        .replace(/^[ \\t]+/gm, '')         // 去除每行開頭的空白
-        .replace(/[ \\t]+$/gm, '')         // 去除每行結尾的空白
-        .replace(/[ \\t]+/g, ' ')          // 將連續空白縮減為單一空格
-        .replace(/\\n{3,}/g, '\\n\\n')     // 限制連續換行最多為兩個 (保留段落)
-        .trim();
-        
-      fileName = $('title').text().trim() || url;
-      }
-    } else if (req.file) {
+      // 提取文字並進行�    } else if (req.file) {
       // File Upload
       const filePath = req.file.path;
       fileName = req.file.originalname;
@@ -583,22 +573,23 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
       return res.status(400).json({ error: 'No file or URL provided' });
     }
 
-    const finalFormat = requestedFormat || 'summary';
+        const finalFormat = requestedFormat || 'summary';
     let systemPrompt = '';
 
-    if (finalFormat === 'timeline') {
-      systemPrompt = `你是一個專業的內容解析師。請深入分析以下文本，提取出時間軸上所有關鍵的重要事件或步驟（越詳細、完整越好）。
+    if (finalFormat === 'social') {
+      const socialFormat = `{ "social": { "title": "文案企劃主標題", "platforms": [ { "name": "平台名稱(例如：小紅書爆款、IG 輪播圖企劃、Facebook 推廣長文、Threads 熱議串)", "content": "針對該平台特性優化、包含吸睛標題、生動表情符號與熱門標籤的完整文案稿" } ] } }`;
+      systemPrompt = `你是一個頂級的社群行銷企劃與文案寫作大師。請詳細閱讀提供的內容，將其重新整理編排為適合在社群媒體傳播的優質發文文案。
+請針對以下四個平台特性，各產出一篇極具吸引力的完整文案稿：
+1. 「小紅書爆款」：雙行痛點大標題、內容展開分點列述、豐富的 Emoji 表情、文末熱門 Tag 標籤。
+2. 「IG 輪播圖企劃」：規劃第 1 張至第 10 張圖的視覺文案內容（包含每張圖大綱、配圖畫面建議）與貼文說明。
+3. 「Facebook 推廣長文」：吸引點擊的開場白、邏輯嚴謹的分段說明、適合在 FB 閱讀的換行空間與文末 Call to Action。
+4. 「Threads 熱議串」：利用 Twitter 式的分點討論串 (1/5, 2/5...)，用精簡犀利、有話題性的短文引發互動。
+
 請用繁體中文回答，嚴格以 JSON 格式輸出：
-{ "timeline": { "title": "主標題", "events": [ { "time": "時間或順序", "title": "事件標題", "description": "事件詳細描述（請詳細說明此事件的前因後果，至少 100 字）", "impact": "此事件的影響、意義或後續效益" } ] } }
-要求：必須提供至少 5~10 個事件節點，每個事件都必須有詳盡完整的描述與脈絡，不能敷衍簡略。`;
-    } else if (finalFormat === 'tree') {
-      systemPrompt = `你是一個專業的知識架構師。請深入分析以下文本，將所有重要觀點與細節整理為樹狀心智圖結構。
-請用繁體中文回答，嚴格以 JSON 格式輸出：
-{ "tree": { "title": "主題標題", "overview": "整體核心概述（一句話）", "nodes": [ { "concept": "主要核心概念", "details": "詳細說明該概念的核心內涵與重要性（至少 80 字）", "subConcepts": [ { "concept": "子概念與分支說明", "details": "具體的補充、例子或子概念說明" } ] } ] } }
-要求：必須提供至少 5~8 個主要核心概念節點，每個概念節點底下必須包含 3~5 個詳細的子概念與具體佐證，務求架構完整、細節豐富。`;
+${socialFormat}`;
     } else {
       // Default to summary
-      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（長文章每個重點說明需 100-200 字，短文章也至少需 50 字以上的具體分析，不能敷衍）", "quotes": ["原文金句一", "原文金句二"], "details": ["細節補充一", "細節補充二", "細節補充三"] } ] } }`;
+      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（長文章每個重點說明需 100-200 字，短文章也至少需 50 字以上的具體 analysis，不能敷衍）", "quotes": ["原文金句一", "原文金句二"], "details": ["細節補充一", "細節補充二", "細節補充三"] } ] } }`;
 
       systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請詳細閱讀提供的內容，提取核心資訊，產生一份詳盡且結構完整的懶人包摘要報告。
 報告必須包含適量的 keyPoints（如果輸入的原文較短，提供 2~3 個重點即可；如果原文較長，請提供 4~8 個深度重點）。
@@ -668,88 +659,7 @@ ${summaryFormat}`;
   }
 });
 
-app.post('/api/generate-graph', authenticateToken, async (req, res) => {
-  try {
-    const { content } = req.body;
-    if (!content) return res.status(400).json({ error: 'No content provided' });
-    
-    // Parse the blocks recursively to extract all plain text
-    let plainText = '';
-    try {
-      const blocks = JSON.parse(content);
-      const extractText = (nodes: any[]): string => {
-        if (!Array.isArray(nodes)) return '';
-        return nodes.map((b: any) => {
-          let text = '';
-          if (b.content) {
-            if (Array.isArray(b.content)) {
-              text = b.content.map((c: any) => c.text || '').join('');
-            } else if (typeof b.content === 'string') {
-              text = b.content;
-            }
-          }
-          const childrenText = b.children ? extractText(b.children) : '';
-          return text + (childrenText ? '\n' + childrenText : '');
-        }).filter(Boolean).join('\n');
-      };
-      plainText = extractText(blocks);
-    } catch {
-      plainText = content;
-    }
 
-    if (plainText.length > 20000) {
-      plainText = plainText.substring(0, 20000) + '...';
-    }
-
-    const systemPrompt = `你是一個專業的知識圖譜構建專家與企劃總監。請將以下文章內容，重組為「視覺化畫布」所需的節點（Nodes）與連線（Edges）。
-請盡可能保留原始文章中的細節，讓使用者在畫布上能看到完整的重點解說、名言金句及補充細節。
-
-輸出必須嚴格為 JSON 格式：
-{
-  "nodes": [
-    {
-      "id": "node-1", // 必須是唯一字串
-      "title": "重點標題",
-      "content": "詳盡的重點解說 (字數不限，請保留完整語意)",
-      "quotes": ["名言金句1", "名言金句2"],
-      "details": ["細節補充1", "細節補充2", "具體行動建議"]
-    }
-  ],
-  "edges": [
-    { "source": "node-1", "target": "node-2", "label": "因果/關聯說明 (選填)" }
-  ]
-}
-
-請確保：
-1. 節點的 id 必須與 edges 中的 source/target 完全吻合。
-2. edges 的關聯應能反映內容的邏輯推演（如時間順序、因果關係或層級架構）。
-3. 如果內容偏向線性（如懶人包），請將節點串連為一條主線，或加入一些分支。`;
-
-    const completion = await openai.chat.completions.create({
-      model: "qwen-max",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `請解析以下內容：\n\n${plainText}` }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    const rawContent = completion.choices[0]?.message?.content || '';
-
-    let resultObj;
-    try {
-      resultObj = parseRobustJSON(rawContent);
-    } catch (parseErr) {
-      console.error('JSON parse failed for generate-graph, raw content:', rawContent.substring(0, 500));
-      return res.status(500).json({ error: 'AI 回傳格式錯誤，無法生成圖表' });
-    }
-
-    res.json({ success: true, graphData: resultObj });
-  } catch (err) {
-    console.error('Generate graph error:', err);
-    res.status(500).json({ error: 'Generation failed' });
-  }
-});
 
 // WebSockets Connection
 io.on('connection', (socket) => {

@@ -7,77 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 import CommentPanel from '../components/CommentPanel';
 import { API_BASE_URL } from '../config';
 import { templates } from "../utils/templates";
-import CanvasEditor from '../components/CanvasEditor';
-import YoutubePlayer from '../components/YoutubePlayer';
+
+
 
 const getYoutubeId = (url: string) => {
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
   return match ? match[1] : null;
-};
-
-const syncGraphChangesToBlocks = (blocks: any[], graphDataStr: string): any[] => {
-  try {
-    const graph = JSON.parse(graphDataStr);
-    if (!graph || !Array.isArray(graph.nodes)) return blocks;
-    
-    const newBlocks = JSON.parse(JSON.stringify(blocks));
-    let nodeIndex = 0;
-    for (let i = 0; i < newBlocks.length; i++) {
-      const block = newBlocks[i];
-      if (block.type === 'heading' && block.props?.level === 3) {
-        const node = graph.nodes[nodeIndex];
-        if (node) {
-          // 1. Update Point Title Heading level 3
-          const newTitle = node.title || node.data?.title;
-          if (newTitle && block.content?.[0]) {
-            block.content[0].text = newTitle;
-          }
-          
-          let detailIdx = 0;
-          let quoteIdx = 0;
-          for (let j = i + 1; j < newBlocks.length; j++) {
-            const subBlock = newBlocks[j];
-            if (subBlock.type === 'heading') {
-              break;
-            }
-            
-            // 2. Update explanation Paragraph
-            if (subBlock.type === 'paragraph' && subBlock.props?.backgroundColor !== 'yellow' && subBlock.props?.backgroundColor !== 'blue') {
-              const newContent = node.content || node.data?.content;
-              if (newContent && subBlock.content?.[0]) {
-                subBlock.content[0].text = newContent;
-              }
-            }
-            
-            // 3. Update details BulletListItem
-            if (subBlock.type === 'bulletListItem') {
-              const detailsList = node.details || node.data?.details || [];
-              if (detailsList[detailIdx] !== undefined && subBlock.content?.[0]) {
-                subBlock.content[0].text = detailsList[detailIdx];
-              }
-              detailIdx++;
-            }
-            
-            // 4. Update quotes Paragraph (yellow)
-            if (subBlock.type === 'paragraph' && subBlock.props?.backgroundColor === 'yellow') {
-              const quotesList = node.quotes || node.data?.quotes || [];
-              if (quotesList[quoteIdx] !== undefined && subBlock.content?.[0]) {
-                const currentText = subBlock.content[0].text || '';
-                const prefix = currentText.startsWith('💬') ? '💬 ' : '';
-                subBlock.content[0].text = prefix + quotesList[quoteIdx];
-              }
-              quoteIdx++;
-            }
-          }
-          nodeIndex++;
-        }
-      }
-    }
-    return newBlocks;
-  } catch (e) {
-    console.error("Failed to sync graph changes to blocks", e);
-    return blocks;
-  }
 };
 
 export default function EditorPage() {
@@ -91,13 +26,13 @@ export default function EditorPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'text' | 'canvas' | 'split'>('text');
+  
   const [analyzeFormat, setAnalyzeFormat] = useState('summary');
   const [analyzeStatus, setAnalyzeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [analyzeMsg, setAnalyzeMsg] = useState('');
-  const [youtubeTime, setYoutubeTime] = useState(0);
-  const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
-  const [graphVersion, setGraphVersion] = useState(0);
+  
+  
+  
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -192,50 +127,35 @@ export default function EditorPage() {
   const generateBlocksFromResult = (data: any) => {
     if (!data.result) return [];
 
-    // 前端也自動偵測格式：如果後端回傳 'auto' 或格式與 result 的 key 不符，從 result 結構推斷
     let detectedFormat = data.format;
     if (!detectedFormat || detectedFormat === 'auto') {
-      if (data.result.timeline) detectedFormat = 'timeline';
-      else if (data.result.tree) detectedFormat = 'tree';
+      if (data.result.social) detectedFormat = 'social';
       else if (data.result.summary) detectedFormat = 'summary';
-      else detectedFormat = 'timeline';
+      else detectedFormat = 'summary';
     }
-    // 覆蓋 data.format 供後續判斷使用
     const fmt = detectedFormat;
     
-    // 1. 樹狀圖 (Tree)
-    if (fmt === 'tree' && data.result.tree) {
-      const { title, overview, nodes } = data.result.tree;
+    // 1. 社群推廣文案 (Social)
+    if (fmt === 'social' && data.result.social) {
+      const { title, platforms } = data.result.social;
       const blocks: any[] = [];
       
       if (title) blocks.push({ type: "heading", props: { level: 2, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(title), children: [] });
-      if (overview) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "blue", textAlignment: "left" }, content: toInline(`💡 ${overview}`), children: [] });
       
-      const buildTree = (subNodes: any[]): any[] => {
-        if (!subNodes || !Array.isArray(subNodes)) return [];
-        return subNodes.map(sub => ({
-          type: "bulletListItem",
-          props: { textColor: "default", backgroundColor: "default", textAlignment: "left" },
-          content: toInline(sub.concept + (sub.details ? `：${sub.details}` : "")),
-          children: buildTree(sub.subConcepts)
-        }));
-      };
-      
-      if (nodes && Array.isArray(nodes)) {
-        nodes.forEach((n: any) => {
-          blocks.push({
-            type: "heading",
-            props: { level: 3, textColor: "default", backgroundColor: "default", textAlignment: "left" },
-            content: toInline(n.concept),
-            children: buildTree(n.subConcepts || [])
+      if (platforms && Array.isArray(platforms)) {
+        platforms.forEach((p: any) => {
+          blocks.push({ type: "heading", props: { level: 3, textColor: "default", backgroundColor: "blue", textAlignment: "left" }, content: toInline(`📢 ${p.name}`), children: [] });
+          
+          const lines = (p.content || '').split('\n');
+          lines.forEach((line: string) => {
+            if (line.trim()) {
+              blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(line), children: [] });
+            }
           });
-          if (n.details) {
-            blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(n.details), children: [] });
-          }
         });
       }
       return blocks;
-    } 
+    }
     // 2. 懶人包摘要 (Summary)
     else if (fmt === 'summary' && data.result.summary) {
       const { title, tldr, keyPoints } = data.result.summary;
@@ -263,40 +183,6 @@ export default function EditorPage() {
       }
       return blocks;
     } 
-    // 3. 時間線 (Timeline) - 同時支援新格式 {title, events[]} 和舊格式直接陣列
-    else if (fmt === 'timeline' && data.result.timeline) {
-      const timelineData = data.result.timeline;
-      const blocks: any[] = [];
-
-      // 新格式：{ title, events[] }
-      if (timelineData && !Array.isArray(timelineData) && timelineData.events) {
-        const { title, events } = timelineData;
-        if (title) blocks.push({ type: "heading", props: { level: 2, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(title), children: [] });
-        events.forEach((item: any) => {
-          const label = item.title || item.text || '';
-          if (item.time || label) {
-            blocks.push({ type: "heading", props: { level: 3, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(`📌 [${item.time || ''}] ${label}`), children: [] });
-          }
-          const desc = item.description || item.text || '';
-          if (desc && desc !== label) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(desc), children: [] });
-          if (item.impact) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "orange", textAlignment: "left" }, content: toInline(`⚡ 影響：${item.impact}`), children: [] });
-        });
-      }
-      // 舊格式：直接是陣列 timeline: [...]
-      else if (Array.isArray(timelineData)) {
-        timelineData.forEach((item: any) => {
-          const label = item.title || item.text || '';
-          if (item.time || label) {
-            blocks.push({ type: "heading", props: { level: 3, textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(`📌 [${item.time || ''}] ${label}`), children: [] });
-          }
-          const desc = item.description || (item.text !== label ? item.text : '');
-          if (desc) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "default", textAlignment: "left" }, content: toInline(desc), children: [] });
-          if (item.impact) blocks.push({ type: "paragraph", props: { textColor: "default", backgroundColor: "orange", textAlignment: "left" }, content: toInline(`⚡ 影響：${item.impact}`), children: [] });
-        });
-      }
-
-      return blocks;
-    }
     
     // 降級：嘗試從 result 直接讀出文字
     const fallbackText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result, null, 2);
@@ -461,150 +347,6 @@ export default function EditorPage() {
     }
   };
 
-  const generateCanvasGraph = async () => {
-    if (!project || !project.content) return;
-    setIsUploading(true);
-    setAnalyzeStatus('loading');
-    setAnalyzeMsg('🔄 AI 正在將懶人包轉為首覺畫布，請稍候（約 10-20 秒）...');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/generate-graph`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ content: project.content })
-      });
-      const data = await response.json();
-      if (data.success && data.graphData) {
-        const graphDataStr = JSON.stringify(data.graphData);
-        setProject((prev: any) => ({ ...prev, graphData: graphDataStr }));
-        setGraphVersion(prev => prev + 1);
-        fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ graphData: graphDataStr })
-        });
-        setAnalyzeStatus('success');
-        setAnalyzeMsg('✅ 畫布產生完成！');
-        setTimeout(() => setAnalyzeStatus('idle'), 2000);
-        setViewMode('canvas');
-      } else {
-        throw new Error(data.error || '未知錯誤');
-      }
-    } catch (error: any) {
-      console.error("Generate graph failed", error);
-      setAnalyzeStatus('error');
-      setAnalyzeMsg(`❌ 畫布產生失敗：${error.message || '請稍後重試'}`);
-      setTimeout(() => setAnalyzeStatus('idle'), 4000);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // ────────────────────────────────────────────────────────────
-  // CANVAS MODE — full-page, completely separate layout
-  // ────────────────────────────────────────────────────────────
-  if (viewMode === 'canvas') {
-    return (
-      <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-[#0f0f0f] overflow-hidden">
-        {/* Canvas Toolbar */}
-        <div className="shrink-0 h-12 flex items-center px-4 gap-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-10">
-          {!sidebarOpen && (
-            <button 
-              onClick={() => setSidebarOpen(true)}
-              className="p-1.5 mr-2 rounded hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark text-notion-text-muted-light dark:text-notion-text-muted-dark transition-colors"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-          )}
-          {/* Home button */}
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            首頁
-          </button>
-          <span className="text-gray-300 dark:text-gray-700">/</span>
-          {/* Back to text mode */}
-          <button
-            onClick={() => setViewMode('text')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium transition-colors"
-          >
-            ← 返回文字懶人包
-          </button>
-          <span className="text-gray-300 dark:text-gray-700">/</span>
-          {/* Project title */}
-          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate max-w-xs">
-            🧩 {project?.title || '視覺畫布'}
-          </span>
-
-          <div className="ml-auto flex items-center gap-2">
-            {/* Regenerate */}
-            <button
-              onClick={generateCanvasGraph}
-              disabled={isUploading}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 shadow-sm"
-            >
-              {isUploading ? <Loader2 size={14} className="animate-spin" /> : '🔄'}
-              重新產生
-            </button>
-          </div>
-        </div>
-
-        {/* Loading overlay */}
-        {analyzeStatus === 'loading' && (
-          <div className="absolute inset-0 top-12 z-50 flex flex-col items-center justify-center bg-gray-900/60 backdrop-blur-sm">
-            <Loader2 size={40} className="animate-spin text-blue-400 mb-4" />
-            <p className="text-white font-medium">{analyzeMsg}</p>
-          </div>
-        )}
-
-        {/* Full-page canvas */}
-        <div className="flex-1 overflow-hidden">
-          <CanvasEditor
-            key={`${project?.id}-${graphVersion}`}
-            initialData={project?.graphData}
-            currentTime={youtubeTime}
-            onPlayNode={(time) => setSeekTime(time)}
-            onChange={(data) => {
-              if (!id || !token || !project) return;
-              
-              let updatedBlocksJson = project.content;
-              try {
-                const currentBlocks = JSON.parse(project.content);
-                const syncedBlocks = syncGraphChangesToBlocks(currentBlocks, data);
-                updatedBlocksJson = JSON.stringify(syncedBlocks);
-              } catch (e) {
-                console.error("Block sync failed", e);
-              }
-
-              setProject((prev: any) => ({ 
-                ...prev, 
-                graphData: data,
-                content: updatedBlocksJson
-              }));
-
-              fetch(`${API_BASE_URL}/api/projects/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ 
-                  graphData: data,
-                  content: updatedBlocksJson
-                })
-              });
-            }}
-          />
-        </div>
-
-        <YoutubePlayer
-          videoId={project?.youtubeUrl ? (getYoutubeId(project.youtubeUrl) || '') : ''}
-          seekToTime={seekTime}
-          onTimeUpdate={setYoutubeTime}
-        />
-      </div>
-    );
-  }
-
-  // ────────────────────────────────────────────────────────────
   // TEXT MODE — normal editor layout
   // ────────────────────────────────────────────────────────────
   return (
@@ -643,9 +385,8 @@ export default function EditorPage() {
               onChange={(e) => setAnalyzeFormat(e.target.value)}
               className="bg-transparent border-none outline-none text-sm text-notion-text-light dark:text-notion-text-dark font-medium cursor-pointer mr-2 shrink-0 border-r border-gray-200 dark:border-gray-700 pr-2"
             >
-              <option value="summary">懶人包模式</option>
-              <option value="timeline">時間軸模式</option>
-              <option value="tree">心智圖模式</option>
+              <option value="summary">重點懶人包</option>
+              <option value="social">社群推廣文案</option>
             </select>
 
             <input 
@@ -783,33 +524,9 @@ export default function EditorPage() {
             </div>
             
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              {project?.graphData && (
-                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
-                  <button 
-                    onClick={() => setViewMode('text')}
-                    className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white"
-                  >
-                    📝 文字模式
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('canvas')}
-                    className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    🧩 畫布模式
-                  </button>
-                </div>
-              )}
               
-              {project?.content && project.content.length > 10 && (
-                <button 
-                  onClick={generateCanvasGraph}
-                  disabled={isUploading}
-                  className="px-4 py-2 rounded-lg text-sm font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md flex items-center gap-2 disabled:opacity-50 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-none"
-                >
-                  {isUploading ? <Loader2 size={16} className="animate-spin" /> : "✨"}
-                  {project?.graphData ? "🔄 重新產生畫布" : "下一步：產生視覺畫布"}
-                </button>
-              )}
+              
+              
             </div>
             
             {project ? (
@@ -910,11 +627,7 @@ export default function EditorPage() {
           onClose={() => setCommentTarget(null)}
         />
       )}
-      <YoutubePlayer 
-        videoId={project?.youtubeUrl ? (getYoutubeId(project.youtubeUrl) || "") : ""} 
-        seekToTime={seekTime} 
-        onTimeUpdate={setYoutubeTime} 
-      />
+      
     </>
   );
 }
