@@ -78,8 +78,7 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
   }
   
   // Inject onPlay callback into nodes and format for CustomNode
-  const nodesWithCallbacks = parsedData.nodes.map((node: any) => {
-    // LLM might output title/content at the root of the node instead of inside data
+  const rawNodes = parsedData.nodes.map((node: any) => {
     const nodeData = { 
       ...(node.data || {}), 
       title: node.title || node.data?.title,
@@ -89,27 +88,40 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
       timestamp: node.timestamp || node.data?.timestamp,
       onPlay: onPlayNode 
     };
-    
     return {
       ...node,
-      type: 'custom', // Ensure we use CustomNode
+      type: 'custom',
+      // Provide default position so ReactFlow doesn't break; dagre will override below
+      position: node.position ?? { x: 0, y: 0 },
       data: nodeData
     };
   });
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithCallbacks);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(parsedData.edges || []);
+  // Pre-compute dagre layout synchronously so ReactFlow gets valid positions on first render
+  const needsLayout = rawNodes.length > 0 && (!rawNodes[0].position || rawNodes[0].position.x === 0);
+  let initialNodes = rawNodes;
+  let initialEdges: any[] = parsedData.edges || [];
+  if (needsLayout && rawNodes.length > 0) {
+    const { nodes: ln, edges: le } = getLayoutedElements(rawNodes, initialEdges);
+    initialNodes = ln;
+    initialEdges = le;
+  }
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
 
-  // Auto layout on initial load if nodes lack meaningful positions
+  // Auto-fit view on first load
   useEffect(() => {
-    if (nodes.length > 0 && nodes[0].position?.x === undefined) {
-      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges);
-      setNodes(layoutedNodes);
-      setEdges(layoutedEdges);
-      window.requestAnimationFrame(() => setCenter(layoutedNodes[0].position.x, layoutedNodes[0].position.y, { zoom: 1 }));
+    if (nodes.length > 0) {
+      window.requestAnimationFrame(() => {
+        try {
+          setCenter(nodes[0].position.x + 160, nodes[0].position.y + 75, { zoom: 0.8, duration: 600 });
+        } catch (_) {}
+      });
     }
-  }, [nodes.length]); // run once basically
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only on mount
 
   const onLayout = useCallback(
     (direction = 'TB') => {
