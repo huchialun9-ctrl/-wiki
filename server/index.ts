@@ -563,32 +563,49 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
     let systemPrompt = '';
 
     if (finalFormat === 'timeline') {
-      systemPrompt = `你是一個專業的內容解析師。請分析以下文本，提取出時間軸上的重要事件或步驟。
+      systemPrompt = `你是一個專業的內容解析師。請深入分析以下文本，提取出時間軸上所有關鍵的重要事件或步驟（越詳細、完整越好）。
 請用繁體中文回答，嚴格以 JSON 格式輸出：
-{ "timeline": { "title": "主標題", "events": [ { "time": "時間或順序", "title": "事件標題", "description": "事件詳細描述（至少 50 字）", "impact": "此事件的影響或意義" } ] } }
-要求：至少提供 5 個事件節點，每個事件需有完整描述。`;
+{ "timeline": { "title": "主標題", "events": [ { "time": "時間或順序", "title": "事件標題", "description": "事件詳細描述（請詳細說明此事件的前因後果，至少 100 字）", "impact": "此事件的影響、意義或後續效益" } ] } }
+要求：必須提供至少 5~10 個事件節點，每個事件都必須有詳盡完整的描述與脈絡，不能敷衍簡略。`;
     } else if (finalFormat === 'tree') {
-      systemPrompt = `你是一個專業的知識架構師。請分析以下文本，將內容整理為樹狀心智圖結構。
+      systemPrompt = `你是一個專業的知識架構師。請深入分析以下文本，將所有重要觀點與細節整理為樹狀心智圖結構。
 請用繁體中文回答，嚴格以 JSON 格式輸出：
-{ "tree": { "title": "主題標題", "overview": "整體概述（一句話）", "nodes": [ { "concept": "主要概念", "details": "詳細說明", "subConcepts": [ { "concept": "子概念", "details": "子說明" } ] } ] } }
-要求：至少提供 4 個主要節點，每個節點需有 2-3 個子概念。`;
+{ "tree": { "title": "主題標題", "overview": "整體核心概述（一句話）", "nodes": [ { "concept": "主要核心概念", "details": "詳細說明該概念的核心內涵與重要性（至少 80 字）", "subConcepts": [ { "concept": "子概念與分支說明", "details": "具體的補充、例子或子概念說明" } ] } ] } }
+要求：必須提供至少 5~8 個主要核心概念節點，每個概念節點底下必須包含 3~5 個詳細的子概念與具體佐證，務求架構完整、細節豐富。`;
     } else {
       // Default to summary
-      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（至少 80 字）", "quotes": ["重要原文名言一", "名言二"], "details": ["細節補充1", "細節補充2", "細節補充3"] } ] } }`;
+      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（至少 150 字，詳細闡述背景、因果關係與核心邏輯，不能敷衍）", "quotes": ["重要原文名言一", "名言二"], "details": ["細節補充1", "細節補充2", "細節補充3", "細節補充4"] } ] } }`;
 
-      systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請閱讀提供的內容，提取所有關鍵資訊，產生一份完整的懶人包摘要報告。
-請提供主標題(title)與一句話速讀(tldr)。報告須包含 3~5 個 keyPoints，每個重點需有說明(explanation)、金句(quotes)、條列細節(details)。
+      systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請詳細閱讀提供的內容，提取所有深度的關鍵資訊，產生一份內容非常豐富、詳盡且結構完整的懶人包摘要報告（絕不能草率或只有幾句話）。
+請提供主標題(title)與精確的一句話速讀(tldr)。報告必須包含 3 到 8 個極為詳細的 keyPoints，每個重點需有說明(explanation)、原文金句(quotes)與具體的條列細節(details)。
 請嚴格以繁體中文、JSON 格式輸出，結構必須為：
 ${summaryFormat}`;
     }
 
     // Limit text to reduce AI processing time
-    if (textContent.length > 12000) {
-      textContent = textContent.substring(0, 12000) + '...[截斷]';
+    if (textContent.length > 15000) {
+      textContent = textContent.substring(0, 15000) + '...[截斷]';
     }
     
-    if (textContent.trim().length < 50) {
-      return res.status(400).json({ error: '擷取到的內容太少，請確認網址可以正常開啟，或改用檔案上傳' });
+    const isAntiBot = (text: string) => {
+      const lower = text.toLowerCase();
+      return (
+        lower.includes('cloudflare') ||
+        lower.includes('security challenge') ||
+        lower.includes('enable javascript') ||
+        lower.includes('robot check') ||
+        lower.includes('access denied') ||
+        lower.includes('checking your browser') ||
+        (lower.includes('blocked') && lower.includes('ip')) ||
+        lower.includes('ddos protection') ||
+        lower.includes('just a moment')
+      );
+    };
+
+    if (textContent.trim().length < 150 || isAntiBot(textContent)) {
+      return res.status(400).json({ 
+        error: '擷取網網頁內容失敗或遭到防爬蟲阻擋（如 Cloudflare 安全驗證）。請直接複製網頁文章內容，點擊右方迴紋針圖示上傳為 TXT/PDF 檔，或是將文字貼到編輯器中！' 
+      });
     }
 
     const completion = await openai.chat.completions.create({
