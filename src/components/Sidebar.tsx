@@ -191,7 +191,16 @@ export default function Sidebar({ isOpen, toggle, onSearch }: SidebarProps) {
               <span className="text-xs text-notion-text-muted-light truncate">個人設定</span>
             </div>
           </div>
-          <button onClick={logout} className="text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors shrink-0">登出</button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={toggleTheme} 
+              className="text-notion-text-muted-light dark:text-notion-text-muted-dark hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 p-1.5 rounded transition-colors"
+              title="切換深淺色主題"
+            >
+              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+            <button onClick={logout} className="text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1.5 rounded transition-colors shrink-0">登出</button>
+          </div>
         </div>
       </div>
     </aside>
