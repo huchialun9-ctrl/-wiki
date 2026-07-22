@@ -486,17 +486,25 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
           const transcript = await YoutubeTranscript.fetchTranscript(url);
           textContent = transcript.map(t => t.text).join(' ');
           
-          // Also try to get title from the page
-          const response = await axios.get(url, { timeout: 10000 });
-          const $ = cheerio.load(response.data);
-          fileName = $('title').text() || url;
+          // Get title from the page
+          try {
+            const response = await axios.get(url, { timeout: 8000 });
+            const $ = cheerio.load(response.data);
+            fileName = $('title').text() || url;
+          } catch {
+            fileName = url;
+          }
         } catch (ytErr) {
           console.warn("YouTube transcript failed, falling back to page parsing:", ytErr);
           // Fallback to normal parsing if transcript fails (e.g. no CC)
-          const response = await axios.get(url, { timeout: 10000 });
-          const $ = cheerio.load(response.data);
-          fileName = $('title').text() || url;
-          textContent = $('body').text().replace(/\s+/g, ' ').trim();
+          try {
+            const response = await axios.get(url, { timeout: 8000 });
+            const $ = cheerio.load(response.data);
+            fileName = $('title').text() || url;
+            textContent = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 8000);
+          } catch {
+            return res.status(400).json({ error: '無法讀取 YouTube 影片字幕，請確認影片有開啟字幕（CC）功能' });
+          }
         }
       } else {
         // Normal URL Scraping
@@ -555,27 +563,32 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
     let systemPrompt = '';
 
     if (finalFormat === 'timeline') {
-      systemPrompt = `You are a professional content parser. Analyze the given text and extract a chronological timeline of events or a step-by-step logical sequence.
-Please strictly output in JSON format:
-{ "timeline": { "title": "Main Title", "events": [ { "time": "Timestamp or Date if available (or sequence number)", "title": "Event Title", "description": "Detailed description of what happened", "impact": "Impact or significance of this event" } ] } }`;
+      systemPrompt = `你是一個專業的內容解析師。請分析以下文本，提取出時間軸上的重要事件或步驟。
+請用繁體中文回答，嚴格以 JSON 格式輸出：
+{ "timeline": { "title": "主標題", "events": [ { "time": "時間或順序", "title": "事件標題", "description": "事件詳細描述（至少 50 字）", "impact": "此事件的影響或意義" } ] } }
+要求：至少提供 5 個事件節點，每個事件需有完整描述。`;
     } else if (finalFormat === 'tree') {
-      systemPrompt = `You are an expert structural analyst. Analyze the given text and break it down into a logical tree or mind map structure.
-Please strictly output in JSON format:
-{ "tree": { "title": "Main Topic", "overview": "Brief overview of the topic", "nodes": [ { "concept": "Primary Concept", "details": "Explanation of the concept", "subConcepts": [ { "concept": "Sub-concept", "details": "Details of the sub-concept" } ] } ] } }`;
+      systemPrompt = `你是一個專業的知識架構師。請分析以下文本，將內容整理為樹狀心智圖結構。
+請用繁體中文回答，嚴格以 JSON 格式輸出：
+{ "tree": { "title": "主題標題", "overview": "整體概述（一句話）", "nodes": [ { "concept": "主要概念", "details": "詳細說明", "subConcepts": [ { "concept": "子概念", "details": "子說明" } ] } ] } }
+要求：至少提供 4 個主要節點，每個節點需有 2-3 個子概念。`;
     } else {
       // Default to summary
-      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點詳細說明 (字數需超過 150 字，盡可能詳盡解說上下文、來龍去脈與結論，請勿精簡)", "imagePrompt": "abstract glowing lightbulb 3d render", "quotes": ["擷取的重要原文名言或金句一", "擷取的重要原文名言或金句二"], "details": ["細節補充1：數據或案例", "細節補充2：延伸影響", "細節補充3：具體行動建議", "細節補充4"] } ] } }`;
+      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（至少 80 字）", "quotes": ["重要原文名言一", "名言二"], "details": ["細節補充1", "細節補充2", "細節補充3"] } ] } }`;
 
-      systemPrompt = `你是一個頂級的商業顧問、企劃大師與資料分析專家。請閱讀提供的文章，並提取出所有關鍵的資訊，產生一份「極度完整且詳盡」的高階摘要報告（Summary）。
-請注意，這份報告將提供給專業團隊使用，內容「絕對不能太少」，請盡量將原文中的洞察、案例、數據與前後脈絡完整保留，並進行深度解析。
-請提供主標題(title)與一句話速讀(tldr)。報告必須包含至少 3 到 5 個 keyPoints。每個重點(keyPoints)都需要有深入的說明(explanation，至少 150 字以上)、從原文擷取的多句金句(quotes)以及豐富的條列式細節(details)，確保不遺漏任何重要資訊。
-同時為每個重點提供一個英文的圖片生成指令 (imagePrompt) 用於產生示意圖。
-請嚴格以 JSON 格式輸出，結構必須為：
+      systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請閱讀提供的內容，提取所有關鍵資訊，產生一份完整的懶人包摘要報告。
+請提供主標題(title)與一句話速讀(tldr)。報告須包含 3~5 個 keyPoints，每個重點需有說明(explanation)、金句(quotes)、條列細節(details)。
+請嚴格以繁體中文、JSON 格式輸出，結構必須為：
 ${summaryFormat}`;
     }
 
-    if (textContent.length > 15000) {
-      textContent = textContent.substring(0, 15000) + '...[truncated]';
+    // Limit text to reduce AI processing time
+    if (textContent.length > 12000) {
+      textContent = textContent.substring(0, 12000) + '...[截斷]';
+    }
+    
+    if (textContent.trim().length < 50) {
+      return res.status(400).json({ error: '擷取到的內容太少，請確認網址可以正常開啟，或改用檔案上傳' });
     }
 
     const completion = await openai.chat.completions.create({
@@ -587,10 +600,11 @@ ${summaryFormat}`;
         },
         { 
           role: "user", 
-          content: `Analyze this document based on the requested format:\n\n${textContent}`
+          content: `Analyze this content:\n\n${textContent}`
         }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: 4096
     });
 
     // 從 AI 回應讀取內容

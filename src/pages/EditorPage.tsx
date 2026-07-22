@@ -28,6 +28,8 @@ export default function EditorPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'text' | 'canvas' | 'split'>('text');
   const [analyzeFormat, setAnalyzeFormat] = useState('summary');
+  const [analyzeStatus, setAnalyzeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [analyzeMsg, setAnalyzeMsg] = useState('');
   const [youtubeTime, setYoutubeTime] = useState(0);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
@@ -280,6 +282,8 @@ export default function EditorPage() {
     if (!file) return;
 
     setIsUploading(true);
+    setAnalyzeStatus('loading');
+    setAnalyzeMsg('🔄 正在分析檔案...');
     
     const formData = new FormData();
     formData.append('file', file);
@@ -295,6 +299,9 @@ export default function EditorPage() {
       
       if (data.success && data.result) {
         const blocksToInsert = generateBlocksFromResult(data);
+        setAnalyzeStatus('success');
+        setAnalyzeMsg('✅ 分析完成！');
+        setTimeout(() => setAnalyzeStatus('idle'), 3000);
         
         if (id) {
           window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
@@ -315,6 +322,9 @@ export default function EditorPage() {
       }
     } catch (error) {
       console.error("Upload failed", error);
+      setAnalyzeStatus('error');
+      setAnalyzeMsg('❌ 分析失敗，請稍後重試');
+      setTimeout(() => setAnalyzeStatus('idle'), 4000);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -329,6 +339,8 @@ export default function EditorPage() {
         return;
       }
       setIsUploading(true);
+      setAnalyzeStatus('loading');
+      setAnalyzeMsg('🔄 AI 分析中，請稍候（約 15-30 秒）...');
       try {
         const response = await fetch(`${API_BASE_URL}/api/analyze`, {
           method: 'POST',
@@ -339,6 +351,9 @@ export default function EditorPage() {
         
         if (data.success && data.result) {
           const blocksToInsert = generateBlocksFromResult(data);
+          setAnalyzeStatus('success');
+          setAnalyzeMsg('✅ 分析完成！');
+          setTimeout(() => setAnalyzeStatus('idle'), 3000);
           
           if (id) {
             window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
@@ -370,6 +385,9 @@ export default function EditorPage() {
         }
       } catch (error) {
         console.error("URL Analysis failed", error);
+        setAnalyzeStatus('error');
+        setAnalyzeMsg('❌ 分析失敗，請確認網址是否正確');
+        setTimeout(() => setAnalyzeStatus('idle'), 4000);
       } finally {
         setIsUploading(false);
         e.currentTarget.value = '';
@@ -418,7 +436,21 @@ export default function EditorPage() {
             </button>
           )}
           
-          <div className="flex-1 max-w-2xl mx-auto flex items-center bg-gray-100/5 dark:bg-gray-800/5 rounded-md px-3 py-1.5 focus-within:ring-1 focus-within:ring-notion-border-light dark:focus-within:ring-notion-border-dark transition-shadow">
+          <div className="flex-1 max-w-2xl mx-auto flex items-center bg-gray-100/5 dark:bg-gray-800/5 rounded-md px-3 py-1.5 focus-within:ring-1 focus-within:ring-notion-border-light dark:focus-within:ring-notion-border-dark transition-shadow relative">
+            {analyzeStatus === 'loading' ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-blue-500/10 dark:bg-blue-900/20 rounded-md z-10">
+                <Loader2 size={14} className="animate-spin text-blue-500 mr-2" />
+                <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{analyzeMsg}</span>
+              </div>
+            ) : analyzeStatus === 'success' ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-green-500/10 dark:bg-green-900/20 rounded-md z-10">
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium">{analyzeMsg}</span>
+              </div>
+            ) : analyzeStatus === 'error' ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-red-500/10 dark:bg-red-900/20 rounded-md z-10">
+                <span className="text-sm text-red-600 dark:text-red-400 font-medium">{analyzeMsg}</span>
+              </div>
+            ) : null}
             <span className="text-blue-500 mr-2" title="AI 自動摘要">✨</span>
             
             <select 
