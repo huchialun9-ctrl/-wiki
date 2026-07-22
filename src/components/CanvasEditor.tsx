@@ -62,14 +62,40 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
 function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEditorProps) {
   const { setCenter } = useReactFlow();
   
-  // Parse initial data
-  const parsedData = initialData ? JSON.parse(initialData) : { nodes: [], edges: [] };
+  let parsedData = { nodes: [], edges: [] };
+  try {
+    const raw = initialData ? JSON.parse(initialData) : null;
+    if (raw && Array.isArray(raw.nodes)) {
+      parsedData.nodes = raw.nodes;
+    } else if (raw && raw.graph && Array.isArray(raw.graph.nodes)) {
+      parsedData = raw.graph;
+    } else if (raw && raw.graphData && Array.isArray(raw.graphData.nodes)) {
+      parsedData = raw.graphData;
+    }
+    if (raw && Array.isArray(raw.edges)) parsedData.edges = raw.edges;
+  } catch (e) {
+    console.error("Failed to parse initialData", e);
+  }
   
-  // Inject onPlay callback into nodes
-  const nodesWithCallbacks = parsedData.nodes.map((node: any) => ({
-    ...node,
-    data: { ...node.data, onPlay: onPlayNode }
-  }));
+  // Inject onPlay callback into nodes and format for CustomNode
+  const nodesWithCallbacks = parsedData.nodes.map((node: any) => {
+    // LLM might output title/content at the root of the node instead of inside data
+    const nodeData = { 
+      ...(node.data || {}), 
+      title: node.title || node.data?.title,
+      content: node.content || node.data?.content,
+      quotes: node.quotes || node.data?.quotes,
+      details: node.details || node.data?.details,
+      timestamp: node.timestamp || node.data?.timestamp,
+      onPlay: onPlayNode 
+    };
+    
+    return {
+      ...node,
+      type: 'custom', // Ensure we use CustomNode
+      data: nodeData
+    };
+  });
 
   const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithCallbacks);
   const [edges, setEdges, onEdgesChange] = useEdgesState(parsedData.edges || []);
