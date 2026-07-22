@@ -495,16 +495,10 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
             fileName = url;
           }
         } catch (ytErr) {
-          console.warn("YouTube transcript failed, falling back to page parsing:", ytErr);
-          // Fallback to normal parsing if transcript fails (e.g. no CC)
-          try {
-            const response = await axios.get(url, { timeout: 8000 });
-            const $ = cheerio.load(response.data);
-            fileName = $('title').text() || url;
-            textContent = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 8000);
-          } catch {
-            return res.status(400).json({ error: '無法讀取 YouTube 影片字幕，請確認影片有開啟字幕（CC）功能' });
-          }
+          console.warn("YouTube transcript failed:", ytErr);
+          return res.status(400).json({ 
+            error: '無法讀取 YouTube 影片字幕。原因可能是該影片沒有提供字幕（CC），或該影片目前遭到 YouTube 流量安全驗證限制（伺服器 IP 被暫時限制）。您可以嘗試使用其他影片，或直接複製字幕文字上傳為檔案進行分析。' 
+          });
         }
       } else {
         // Normal URL Scraping
