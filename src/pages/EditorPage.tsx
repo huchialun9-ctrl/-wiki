@@ -18,7 +18,6 @@ export default function EditorPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [format, setFormat] = useState('auto');
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -221,7 +220,7 @@ export default function EditorPage() {
           const response = await fetch(`${API_BASE_URL}/api/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ url: analyzeUrl, format: 'auto' })
+            body: JSON.stringify({ url: analyzeUrl, format: 'summary' })
           });
           const data = await response.json();
           
@@ -258,7 +257,7 @@ export default function EditorPage() {
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('format', format);
+    formData.append('format', 'summary');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -293,7 +292,7 @@ export default function EditorPage() {
         const response = await fetch(`${API_BASE_URL}/api/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ url, format })
+          body: JSON.stringify({ url, format: 'summary' })
         });
         const data = await response.json();
         
@@ -326,20 +325,9 @@ export default function EditorPage() {
           )}
           
           <div className="flex-1 max-w-2xl mx-auto flex items-center bg-gray-100/5 dark:bg-gray-800/5 rounded-md px-3 py-1.5 focus-within:ring-1 focus-within:ring-notion-border-light dark:focus-within:ring-notion-border-dark transition-shadow">
-            <select 
-              value={format} 
-              onChange={e => setFormat(e.target.value)}
-              disabled={isUploading}
-              className="bg-transparent text-xs font-semibold border-none outline-none text-notion-text-muted-light dark:text-notion-text-muted-dark hover:text-blue-500 cursor-pointer disabled:opacity-50 appearance-none"
-              title="選擇 AI 分析模式"
-            >
-              <option value="auto">✨ 自動</option>
-              <option value="timeline">時間線</option>
-              <option value="tree">樹狀圖</option>
-              <option value="summary">摘要</option>
-            </select>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-3"></div>
+            <span className="text-blue-500 mr-2" title="AI 自動摘要">✨</span>
             
+
             <input 
               type="text" 
               placeholder="貼上 YouTube 連結、網址，或輸入 / 開始整理..."
