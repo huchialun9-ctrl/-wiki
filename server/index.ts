@@ -376,16 +376,29 @@ app.get('/api/projects/:id', authenticateToken, async (req: any, res) => {
 // Create a new project
 app.post('/api/projects', authenticateToken, async (req: any, res) => {
   try {
-    const { title, category, teamId } = req.body;
-    if (!teamId) return res.status(400).json({ error: 'Missing teamId' });
-    const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: req.user.id } } });
-    if (!member) return res.status(403).json({ error: 'Access denied' });
+    let { title, category, teamId, content, youtubeUrl } = req.body;
+    
+    // Fallback to user's first team if teamId is not provided
+    if (!teamId) {
+      const firstTeam = await prisma.teamMember.findFirst({
+        where: { userId: req.user.id }
+      });
+      if (firstTeam) {
+        teamId = firstTeam.teamId;
+      } else {
+        return res.status(400).json({ error: 'User does not belong to any team' });
+      }
+    } else {
+      const member = await prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: req.user.id } } });
+      if (!member) return res.status(403).json({ error: 'Access denied' });
+    }
 
     const project = await prisma.project.create({
       data: {
         title: title || '無標題懶人包',
         category: category || 'Drafts',
-        content: JSON.stringify([{ type: "paragraph", content: "" }]),
+        content: content || JSON.stringify([{ type: "paragraph", content: "" }]),
+        youtubeUrl: youtubeUrl || null,
         teamId
       }
     });
