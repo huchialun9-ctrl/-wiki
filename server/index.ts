@@ -594,6 +594,83 @@ ${summaryFormat}`;
   }
 });
 
+app.post('/api/generate-graph', authenticateToken, async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ error: 'No content provided' });
+    
+    // Parse the blocks to extract plain text
+    let plainText = '';
+    try {
+      const blocks = JSON.parse(content);
+      plainText = blocks.map((b: any) => {
+        if (b.content && Array.isArray(b.content)) {
+          return b.content.map((c: any) => c.text).join('');
+        }
+        return '';
+      }).join('\n');
+    } catch {
+      plainText = content;
+    }
+
+    if (plainText.length > 20000) {
+      plainText = plainText.substring(0, 20000) + '...';
+    }
+
+    const systemPrompt = `你是一個專業的知識圖譜構建專家與企劃總監。請將以下文章內容，重組為「視覺化畫布」所需的節點（Nodes）與連線（Edges）。
+請盡可能保留原始文章中的細節，讓使用者在畫布上能看到完整的重點解說、名言金句及補充細節。
+
+輸出必須嚴格為 JSON 格式：
+{
+  "nodes": [
+    {
+      "id": "node-1", // 必須是唯一字串
+      "title": "重點標題",
+      "content": "詳盡的重點解說 (字數不限，請保留完整語意)",
+      "quotes": ["名言金句1", "名言金句2"],
+      "details": ["細節補充1", "細節補充2", "具體行動建議"]
+    }
+  ],
+  "edges": [
+    { "source": "node-1", "target": "node-2", "label": "因果/關聯說明 (選填)" }
+  ]
+}
+
+請確保：
+1. 節點的 id 必須與 edges 中的 source/target 完全吻合。
+2. edges 的關聯應能反映內容的邏輯推演（如時間順序、因果關係或層級架構）。
+3. 如果內容偏向線性（如懶人包），請將節點串連為一條主線，或加入一些分支。`;
+
+    const completion = await openai.chat.completions.create({
+      model: "qwen-max",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `請解析以下內容：\n\n${plainText}` }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const rawContent = completion.choices[0]?.message?.content || '';
+    const jsonStr = rawContent
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .trim();
+
+    let resultObj;
+    try {
+      resultObj = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      return res.status(500).json({ error: 'AI 回傳格式錯誤' });
+    }
+
+    res.json({ success: true, graphData: resultObj });
+  } catch (err) {
+    console.error('Generate graph error:', err);
+    res.status(500).json({ error: 'Generation failed' });
+  }
+});
+
 // WebSockets Connection
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);

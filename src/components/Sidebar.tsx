@@ -1,19 +1,22 @@
 import { API_BASE_URL } from "../config";
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, Plus, FileText, Settings, Home } from 'lucide-react';
+import { Search, ChevronDown, Plus, FileText, Settings, Home, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
   isOpen: boolean;
   toggle: () => void;
+  onSearch?: () => void;
 }
 
-export default function Sidebar({ isOpen, toggle }: SidebarProps) {
+export default function Sidebar({ isOpen, toggle, onSearch }: SidebarProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const { token, user, logout, teams, currentTeam, setCurrentTeam } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const fetchProjects = () => {
@@ -105,7 +108,10 @@ export default function Sidebar({ isOpen, toggle }: SidebarProps) {
 
       {/* Global Search */}
       <div className="px-3 my-2">
-        <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors">
+        <button 
+          onClick={onSearch}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors"
+        >
           <Search size={16} />
           <span>Search</span>
           <div className="ml-auto flex gap-1">

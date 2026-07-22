@@ -258,43 +258,6 @@ export default function EditorPage() {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ youtubeUrl: analyzeUrl })
               });
-
-              if (!project.graphData) {
-                const keyPoints = data.result.summary?.keyPoints || [];
-                const nodes = keyPoints.map((item: any, idx: number) => {
-                  let parsedTime = 0;
-                  if (item.time) {
-                    const parts = item.time.split(':');
-                    if (parts.length === 2) parsedTime = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                    if (parts.length === 3) parsedTime = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-                  }
-                  return {
-                    id: `node-${idx}`,
-                    type: 'custom',
-                    position: { x: 250, y: idx * 250 + 50 },
-                    data: {
-                      title: item.point || item.title || "重點",
-                      content: item.explanation || item.description || "",
-                      timestamp: parsedTime
-                    }
-                  };
-                });
-
-                const edges = nodes.slice(0, -1).map((n: any, idx: number) => ({
-                  id: `e-${n.id}-node-${idx + 1}`,
-                  source: n.id,
-                  target: `node-${idx + 1}`,
-                  animated: true
-                }));
-
-                const graphDataStr = JSON.stringify({ nodes, edges });
-                setProject((prev: any) => ({ ...prev, graphData: graphDataStr }));
-                fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({ graphData: graphDataStr })
-                });
-              }
             }
           }
         } catch (error) {
@@ -330,41 +293,6 @@ export default function EditorPage() {
       if (data.success && data.result) {
         const blocksToInsert = generateBlocksFromResult(data);
         window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
-        
-        // Auto generate canvas nodes layout for uploaded file
-        if (project && !project.graphData) {
-          const nodes = data.result.summary?.keyPoints ? data.result.summary.keyPoints.map((item: any, idx: number) => {
-            return {
-              id: `node-${idx}`,
-              type: 'custom',
-              position: { x: 250, y: idx * 250 + 50 },
-              data: {
-                title: item.point || "重點",
-                content: item.explanation || "",
-              }
-            };
-          }) : [{
-            id: 'node-0',
-            type: 'custom',
-            position: { x: 250, y: 50 },
-            data: { title: "分析完成", content: "請切換文字模式查看完整細節" }
-          }];
-
-          const edges = nodes.length > 1 ? nodes.slice(0, -1).map((n: any, idx: number) => ({
-            id: `e-${n.id}-node-${idx + 1}`,
-            source: n.id,
-            target: `node-${idx + 1}`,
-            animated: true
-          })) : [];
-
-          const graphDataStr = JSON.stringify({ nodes, edges });
-          setProject((prev: any) => ({ ...prev, graphData: graphDataStr }));
-          fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ graphData: graphDataStr })
-          });
-        }
       }
     } catch (error) {
       console.error("Upload failed", error);
@@ -400,6 +328,33 @@ export default function EditorPage() {
         setIsUploading(false);
         e.currentTarget.value = '';
       }
+    }
+  };
+
+  const generateCanvasGraph = async () => {
+    if (!project || !project.content) return;
+    setIsUploading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/generate-graph`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ content: project.content })
+      });
+      const data = await response.json();
+      if (data.success && data.graphData) {
+        const graphDataStr = JSON.stringify(data.graphData);
+        setProject((prev: any) => ({ ...prev, graphData: graphDataStr }));
+        fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ graphData: graphDataStr })
+        });
+        setViewMode('split');
+      }
+    } catch (error) {
+      console.error("Generate graph failed", error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -555,28 +510,41 @@ export default function EditorPage() {
               )}
             </div>
             
-            {project?.graphData && (
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit mb-4">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              {project?.graphData && (
+                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
+                  <button 
+                    onClick={() => setViewMode('text')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'text' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    📝 文字模式
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('canvas')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'canvas' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    🧩 畫布模式
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('split')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'split' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  >
+                    📖 雙開分屏
+                  </button>
+                </div>
+              )}
+              
+              {project?.content && project.content.length > 10 && (
                 <button 
-                  onClick={() => setViewMode('text')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'text' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  onClick={generateCanvasGraph}
+                  disabled={isUploading}
+                  className="px-4 py-2 rounded-lg text-sm font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md flex items-center gap-2 disabled:opacity-50 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-none"
                 >
-                  📝 文字模式
+                  {isUploading ? <Loader2 size={16} className="animate-spin" /> : "✨"}
+                  {project?.graphData ? "🔄 重新產生畫布" : "下一步：產生視覺畫布"}
                 </button>
-                <button 
-                  onClick={() => setViewMode('canvas')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'canvas' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                >
-                  🧩 畫布模式
-                </button>
-                <button 
-                  onClick={() => setViewMode('split')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'split' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                >
-                  📖 雙開分屏
-                </button>
-              </div>
-            )}
+              )}
+            </div>
             
             {project ? (
               <input 

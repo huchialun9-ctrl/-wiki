@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-notion-bg-light: #FFFFFF;
   --color-notion-bg-dark: #191919;
@@ -25,12 +27,10 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    background-color: var(--color-notion-bg-dark);
-    color: var(--color-notion-text-dark);
-    color-scheme: dark;
-  }
+:root.dark {
+  background-color: var(--color-notion-bg-dark);
+  color: var(--color-notion-text-dark);
+  color-scheme: dark;
 }
 
 body {

@@ -12,6 +12,7 @@ interface SearchModalProps {
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
   const [history, setHistory] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const { token } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,6 +30,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           .then(res => res.json())
           .then(data => setHistory(data))
           .catch(err => console.error(err));
+          
+        fetch(`${API_BASE_URL}/api/projects`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => setProjects(data))
+          .catch(err => console.error(err));
       }
     }
   }, [isOpen, token]);
@@ -40,7 +48,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         if (query.startsWith('http://') || query.startsWith('https://')) {
           navigate(`/project/new?analyze_url=${encodeURIComponent(query)}`);
           onClose();
-        } else if (filteredHistory.length > 0) {
+        } else if (query && filteredProjects.length > 0) {
+          navigate(`/project/${filteredProjects[0].id}`);
+          onClose();
+        } else if (!query && filteredHistory.length > 0) {
           navigate(`/project/${filteredHistory[0].projectId}`);
           onClose();
         }
@@ -56,6 +67,11 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const filteredHistory = history.filter(h => 
     h.project && h.project.title && h.project.title.toLowerCase().includes(query.toLowerCase())
   );
+  
+  const filteredProjects = projects.filter(p =>
+    p.title && p.title.toLowerCase().includes(query.toLowerCase())
+  );
+  
   const isUrl = query.startsWith('http://') || query.startsWith('https://');
 
   return (
@@ -96,26 +112,54 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </div>
           ) : (
             <>
-              <div className="px-3 py-2 text-xs font-semibold text-notion-text-muted-light uppercase tracking-wider">Recent Projects</div>
-              {filteredHistory.length > 0 ? (
-                filteredHistory.map((h: any, index: number) => (
-                  <div 
-                    key={h.id}
-                    onClick={() => {
-                      navigate(`/project/${h.projectId}`);
-                      onClose();
-                    }}
-                    className="px-3 py-3 text-sm hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark rounded-lg cursor-pointer flex items-center gap-3 transition-colors group"
-                  >
-                    <div className="p-2 bg-gray-100 dark:bg-white/5 rounded-lg group-hover:bg-white dark:group-hover:bg-white/10 transition-colors"><FileText size={16} className="text-gray-500 dark:text-gray-400" /></div>
-                    <span className="flex-1 truncate dark:text-white">{h.project.title || '已刪除的懶人包'}</span>
-                    {index === 0 && query && <kbd className="text-xs bg-black/5 dark:bg-white/10 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Enter</kbd>}
-                  </div>
-                ))
+              {query.length === 0 ? (
+                <>
+                  <div className="px-3 py-2 text-xs font-semibold text-notion-text-muted-light uppercase tracking-wider">最近瀏覽</div>
+                  {filteredHistory.length > 0 ? (
+                    filteredHistory.map((h: any, index: number) => (
+                      <div 
+                        key={h.id}
+                        onClick={() => {
+                          navigate(`/project/${h.projectId}`);
+                          onClose();
+                        }}
+                        className="px-3 py-3 text-sm hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark rounded-lg cursor-pointer flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="p-2 bg-gray-100 dark:bg-white/5 rounded-lg group-hover:bg-white dark:group-hover:bg-white/10 transition-colors"><FileText size={16} className="text-gray-500 dark:text-gray-400" /></div>
+                        <span className="flex-1 truncate dark:text-white">{h.project.title || '已刪除的懶人包'}</span>
+                        {index === 0 && query && <kbd className="text-xs bg-black/5 dark:bg-white/10 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Enter</kbd>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-8 text-center text-sm text-notion-text-muted-light">
+                      找不到相符的專案
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="px-3 py-8 text-center text-sm text-notion-text-muted-light">
-                  找不到相符的專案
-                </div>
+                <>
+                  <div className="px-3 py-2 text-xs font-semibold text-notion-text-muted-light uppercase tracking-wider">所有專案</div>
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((p: any, index: number) => (
+                      <div 
+                        key={p.id}
+                        onClick={() => {
+                          navigate(`/project/${p.id}`);
+                          onClose();
+                        }}
+                        className="px-3 py-3 text-sm hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark rounded-lg cursor-pointer flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="p-2 bg-gray-100 dark:bg-white/5 rounded-lg group-hover:bg-white dark:group-hover:bg-white/10 transition-colors"><FileText size={16} className="text-gray-500 dark:text-gray-400" /></div>
+                        <span className="flex-1 truncate dark:text-white">{p.title || '無標題懶人包'}</span>
+                        {index === 0 && query && <kbd className="text-xs bg-black/5 dark:bg-white/10 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Enter</kbd>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-8 text-center text-sm text-notion-text-muted-light">
+                      找不到相符的專案
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
