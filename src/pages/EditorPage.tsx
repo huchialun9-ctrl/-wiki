@@ -15,6 +15,71 @@ const getYoutubeId = (url: string) => {
   return match ? match[1] : null;
 };
 
+const syncGraphChangesToBlocks = (blocks: any[], graphDataStr: string): any[] => {
+  try {
+    const graph = JSON.parse(graphDataStr);
+    if (!graph || !Array.isArray(graph.nodes)) return blocks;
+    
+    const newBlocks = JSON.parse(JSON.stringify(blocks));
+    let nodeIndex = 0;
+    for (let i = 0; i < newBlocks.length; i++) {
+      const block = newBlocks[i];
+      if (block.type === 'heading' && block.props?.level === 3) {
+        const node = graph.nodes[nodeIndex];
+        if (node) {
+          // 1. Update Point Title Heading level 3
+          const newTitle = node.title || node.data?.title;
+          if (newTitle && block.content?.[0]) {
+            block.content[0].text = newTitle;
+          }
+          
+          let detailIdx = 0;
+          let quoteIdx = 0;
+          for (let j = i + 1; j < newBlocks.length; j++) {
+            const subBlock = newBlocks[j];
+            if (subBlock.type === 'heading') {
+              break;
+            }
+            
+            // 2. Update explanation Paragraph
+            if (subBlock.type === 'paragraph' && subBlock.props?.backgroundColor !== 'yellow' && subBlock.props?.backgroundColor !== 'blue') {
+              const newContent = node.content || node.data?.content;
+              if (newContent && subBlock.content?.[0]) {
+                subBlock.content[0].text = newContent;
+              }
+            }
+            
+            // 3. Update details BulletListItem
+            if (subBlock.type === 'bulletListItem') {
+              const detailsList = node.details || node.data?.details || [];
+              if (detailsList[detailIdx] !== undefined && subBlock.content?.[0]) {
+                subBlock.content[0].text = detailsList[detailIdx];
+              }
+              detailIdx++;
+            }
+            
+            // 4. Update quotes Paragraph (yellow)
+            if (subBlock.type === 'paragraph' && subBlock.props?.backgroundColor === 'yellow') {
+              const quotesList = node.quotes || node.data?.quotes || [];
+              if (quotesList[quoteIdx] !== undefined && subBlock.content?.[0]) {
+                const currentText = subBlock.content[0].text || '';
+                const prefix = currentText.startsWith('💬') ? '💬 ' : '';
+                subBlock.content[0].text = prefix + quotesList[quoteIdx];
+              }
+              quoteIdx++;
+            }
+          }
+          nodeIndex++;
+        }
+      }
+    }
+    return newBlocks;
+  } catch (e) {
+    console.error("Failed to sync graph changes to blocks", e);
+    return blocks;
+  }
+};
+
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -501,11 +566,30 @@ export default function EditorPage() {
             currentTime={youtubeTime}
             onPlayNode={(time) => setSeekTime(time)}
             onChange={(data) => {
-              if (!id || !token) return;
+              if (!id || !token || !project) return;
+              
+              let updatedBlocksJson = project.content;
+              try {
+                const currentBlocks = JSON.parse(project.content);
+                const syncedBlocks = syncGraphChangesToBlocks(currentBlocks, data);
+                updatedBlocksJson = JSON.stringify(syncedBlocks);
+              } catch (e) {
+                console.error("Block sync failed", e);
+              }
+
+              setProject((prev: any) => ({ 
+                ...prev, 
+                graphData: data,
+                content: updatedBlocksJson
+              }));
+
               fetch(`${API_BASE_URL}/api/projects/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ graphData: data })
+                body: JSON.stringify({ 
+                  graphData: data,
+                  content: updatedBlocksJson
+                })
               });
             }}
           />

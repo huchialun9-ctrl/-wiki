@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import dagre from 'dagre';
 import ReactFlow, { 
   MiniMap, 
@@ -150,9 +150,9 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
   useEffect(() => {
     // debounce this in a real app
     const timeout = setTimeout(() => {
-      // Remove the onPlay callback before saving
+      // Remove functions before saving
       const cleanNodes = nodes.map(n => {
-        const { onPlay, ...restData } = n.data;
+        const { onPlay, onUpdate, ...restData } = n.data;
         return { ...n, data: restData };
       });
       onChange(JSON.stringify({ nodes: cleanNodes, edges }));
@@ -165,8 +165,8 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
     let closestNode: any = null;
     let minDiff = Infinity;
 
-    nodes.forEach(node => {
-      if (node.data.timestamp !== undefined) {
+    nodes.forEach((node: any) => {
+      if (node.data?.timestamp !== undefined) {
         const diff = currentTime - node.data.timestamp;
         if (diff >= 0 && diff < minDiff) {
           minDiff = diff;
@@ -177,26 +177,52 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
 
     if (closestNode && closestNode.id !== activeNodeId) {
       setActiveNodeId(closestNode.id);
-      
-      // Update nodes style for glow effect
-      setNodes(nds => nds.map(n => ({
-        ...n,
-        style: n.id === closestNode.id 
-          ? { ...n.style, boxShadow: '0 0 20px rgba(59, 130, 246, 0.5)', borderColor: '#3b82f6' }
-          : { ...n.style, boxShadow: 'none', borderColor: '#e5e7eb' }
-      })));
-
-      // Pan to node smoothly
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          style: {
+            ...n.style,
+            border: n.id === closestNode.id ? '2px solid #3b82f6' : undefined,
+            boxShadow: n.id === closestNode.id ? '0 0 15px rgba(59, 130, 246, 0.5)' : undefined,
+          },
+        }))
+      );
       if (closestNode.position) {
         setCenter(closestNode.position.x + 150, closestNode.position.y + 100, { zoom: 1, duration: 800 });
       }
     }
   }, [currentTime, nodes, activeNodeId, setCenter, setNodes]);
 
+  const nodesWithCallbacks = useMemo(() => {
+    return nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        onPlay: onPlayNode,
+        onUpdate: (updatedFields: any) => {
+          setNodes((nds) =>
+            nds.map((n) => {
+              if (n.id === node.id) {
+                return {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    ...updatedFields,
+                  },
+                };
+              }
+              return n;
+            })
+          );
+        }
+      }
+    }));
+  }, [nodes, onPlayNode, setNodes]);
+
   return (
     <div className="w-full h-full bg-gray-50 dark:bg-[#1A1A1A] overflow-hidden">
       <ReactFlow
-        nodes={nodes}
+        nodes={nodesWithCallbacks}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
