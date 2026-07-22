@@ -1,0 +1,42 @@
+/* Print Styles for PDF Export */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  /* Hide sidebar, headers, and UI elements */
+  aside, nav, header, button, .no-print {
+    display: none !important;
+  }
+  
+  /* Reset margins for main content */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .notion-editor-container {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 20mm !important;
+    font-size: 12pt !important;
+  }
+  
+  /* Break pages correctly */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  img {
+    page-break-inside: avoid;
+    max-width: 100% !important;
+  }
+  
+  p, div, li {
+    page-break-inside: avoid;
+  }
+}

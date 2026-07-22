@@ -59,6 +59,15 @@ export default function EditorPage() {
     });
   };
 
+  const updateCategory = (newCategory: string) => {
+    if (!id || !token) return;
+    fetch(`${API_BASE_URL}/api/projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ category: newCategory })
+    });
+  };
+
   const exportMarkdown = () => {
     if (!project || !project.content) return;
     try {
@@ -86,6 +95,10 @@ export default function EditorPage() {
     } catch (e) {
       console.error("Export failed", e);
     }
+  };
+  const exportPdf = () => {
+    // 透過瀏覽器原生的列印對話框轉存 PDF，配合 print.css 隱藏 UI
+    window.print();
   };
 
 
@@ -226,16 +239,8 @@ export default function EditorPage() {
           
           if (data.success && data.result) {
             const blocksToInsert = generateBlocksFromResult(data);
-            
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('insertBlocks', { 
-                detail: [
-                  { type: "heading", props: { level: 3 }, content: `🌐 網頁解析: ${data.filename || analyzeUrl}` },
-                  ...blocksToInsert,
-                  { type: "paragraph", content: "" }
-                ]
-              }));
-            }, 1500);
+            setAiTitle(`🌐 網頁解析: ${data.filename || analyzeUrl}`);
+            setAiBlocks(blocksToInsert);
           }
         } catch (error) {
           console.error("Auto URL Analysis failed", error);
@@ -362,7 +367,7 @@ export default function EditorPage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               Live Focus
             </button>
-            <div className="relative">
+            <div className="relative no-print">
               <button 
                 onClick={() => setShareOpen(!shareOpen)}
                 className="text-sm px-3 py-1 font-medium rounded hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors"
@@ -382,6 +387,9 @@ export default function EditorPage() {
                   </button>
                   <button onClick={() => { exportMarkdown(); setShareOpen(false); }} className="w-full text-left px-3 py-1.5 text-sm hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors">
                     Export as Markdown
+                  </button>
+                  <button onClick={() => { exportPdf(); setShareOpen(false); }} className="w-full text-left px-3 py-1.5 text-sm hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors">
+                    Export as PDF
                   </button>
                 </div>
               )}
@@ -407,10 +415,27 @@ export default function EditorPage() {
         {/* Left/Main Document Area */}
         <div className={`flex-1 min-w-0 transition-all duration-500 ${aiBlocks ? 'xl:w-1/2' : 'max-w-4xl mx-auto xl:px-12'}`}>
           {/* Title Area */}
-          <div className="mb-8 group relative">
-            <div className="mb-4 cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark w-fit rounded transition-colors p-1 -ml-1">
-              <img src="/blob.png" alt="Page Icon" className="w-16 h-16 object-contain" />
+          <div className="mb-8 group relative no-print">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark w-fit rounded transition-colors p-1 -ml-1">
+                <img src="/blob.png" alt="Page Icon" className="w-16 h-16 object-contain" />
+              </div>
+              
+              {project && (
+                <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark w-fit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  <input 
+                    type="text"
+                    defaultValue={project.category || 'Drafts'}
+                    onBlur={(e) => updateCategory(e.target.value)}
+                    className="bg-transparent border-none outline-none w-32 focus:w-48 transition-all"
+                    placeholder="專案分類 (資料夾)"
+                    title="編輯專案所屬資料夾"
+                  />
+                </div>
+              )}
             </div>
+            
             {project ? (
               <input 
                 type="text"

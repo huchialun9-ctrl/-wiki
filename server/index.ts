@@ -568,9 +568,25 @@ ${summaryFormat}`;
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   
-  // Client joins a project room to receive real-time comment updates
+  // Client joins a project room to receive real-time updates
   socket.on('join-project', (projectId) => {
     socket.join(projectId);
+  });
+
+  // Cursor movement broadcasting
+  socket.on('cursor-move', (data) => {
+    // data: { projectId, userId, userName, x, y, color }
+    socket.to(data.projectId).emit('remote-cursor-move', data);
+  });
+
+  socket.on('cursor-leave', (data) => {
+    socket.to(data.projectId).emit('remote-cursor-leave', { userId: data.userId });
+  });
+
+  // Block updates broadcasting
+  socket.on('block-update', (data) => {
+    // data: { projectId, blocks }
+    socket.to(data.projectId).emit('remote-block-update', data.blocks);
   });
 
   socket.on('disconnect', () => {
