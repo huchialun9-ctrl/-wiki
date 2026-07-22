@@ -491,7 +491,7 @@ export default function EditorPage() {
                   <h3 className="text-lg font-semibold">或是從精選版型開始 (Template Library)</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {templates.map(tpl => (
+                  {templates.map((tpl: any) => (
                     <div 
                       key={tpl.id}
                       onClick={() => {
