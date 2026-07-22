@@ -471,6 +471,36 @@ app.get('/api/projects/:id/comments', authenticateToken, async (req, res) => {
   }
 });
 
+// --- Robust JSON Parser Helper ---
+function parseRobustJSON(str: string): any {
+  let cleaned = str
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  // Remove trailing commas before closing braces/brackets
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    try {
+      // Fix unescaped control characters/newlines in JSON strings
+      const fixed = cleaned.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+      return JSON.parse(fixed);
+    } catch {
+      throw err;
+    }
+  }
+}
+
 // --- AI Analysis API ---
 
 app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: any, res) => {
@@ -568,10 +598,10 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
 要求：必須提供至少 5~8 個主要核心概念節點，每個概念節點底下必須包含 3~5 個詳細的子概念與具體佐證，務求架構完整、細節豐富。`;
     } else {
       // Default to summary
-      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（至少 150 字，詳細闡述背景、因果關係與核心邏輯，不能敷衍）", "quotes": ["重要原文名言一", "名言二"], "details": ["細節補充1", "細節補充2", "細節補充3", "細節補充4"] } ] } }`;
+      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "深度重點說明（必須介於 150-300 字，深入探討因果邏輯、背景與細節，不能敷衍）", "quotes": ["原文重要佐證金句一", "原文佐證金句二"], "details": ["細節補充一（至少 30 字）", "細節補充二（至少 30 字）", "細節補充三（至少 30 字）", "細節補充四（至少 30 字）"] } ] } }`;
 
-      systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請詳細閱讀提供的內容，提取所有深度的關鍵資訊，產生一份內容非常豐富、詳盡且結構完整的懶人包摘要報告（絕不能草率或只有幾句話）。
-請提供主標題(title)與精確的一句話速讀(tldr)。報告必須包含 3 到 8 個極為詳細的 keyPoints，每個重點需有說明(explanation)、原文金句(quotes)與具體的條列細節(details)。
+      systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請詳細閱讀提供的內容，提取所有深度的關鍵資訊，產生一份內容極為豐富、詳盡且結構完整的懶人包摘要報告。
+報告必須包含 4 到 8 個極為詳細的 keyPoints。每個重點的說明(explanation)字數必須極為充足（150-300字），詳細展開分析；每個細節(details)必須包含至少 4 個詳細條列項，每條細節描述必須至少 30 字（詳細列出數據、案例或邏輯細節），絕不能草率。
 請嚴格以繁體中文、JSON 格式輸出，結構必須為：
 ${summaryFormat}`;
     }
@@ -621,16 +651,9 @@ ${summaryFormat}`;
     // 從 AI 回應讀取內容
     const rawContent = completion.choices[0]?.message?.content || '';
     
-    // 清除可能的 markdown code fence（```json ... ```）
-    const jsonStr = rawContent
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```\s*$/i, '')
-      .trim();
-
     let resultObj: any;
     try {
-      resultObj = JSON.parse(jsonStr);
+      resultObj = parseRobustJSON(rawContent);
     } catch (parseErr) {
       console.error('JSON parse failed, raw content:', rawContent.substring(0, 500));
       return res.status(500).json({ error: 'AI 回傳格式錯誤，無法解析 JSON', raw: rawContent.substring(0, 500) });
@@ -710,17 +733,13 @@ app.post('/api/generate-graph', authenticateToken, async (req, res) => {
     });
 
     const rawContent = completion.choices[0]?.message?.content || '';
-    const jsonStr = rawContent
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```\s*$/i, '')
-      .trim();
 
     let resultObj;
     try {
-      resultObj = JSON.parse(jsonStr);
+      resultObj = parseRobustJSON(rawContent);
     } catch (parseErr) {
-      return res.status(500).json({ error: 'AI 回傳格式錯誤' });
+      console.error('JSON parse failed for generate-graph, raw content:', rawContent.substring(0, 500));
+      return res.status(500).json({ error: 'AI 回傳格式錯誤，無法生成圖表' });
     }
 
     res.json({ success: true, graphData: resultObj });
