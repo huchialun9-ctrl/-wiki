@@ -398,6 +398,8 @@ export default function EditorPage() {
   const generateCanvasGraph = async () => {
     if (!project || !project.content) return;
     setIsUploading(true);
+    setAnalyzeStatus('loading');
+    setAnalyzeMsg('🔄 AI 正在將懶人包轉為首覺畫布，請稍候（約 10-20 秒）...');
     try {
       const response = await fetch(`${API_BASE_URL}/api/generate-graph`, {
         method: 'POST',
@@ -413,10 +415,18 @@ export default function EditorPage() {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ graphData: graphDataStr })
         });
+        setAnalyzeStatus('success');
+        setAnalyzeMsg('✅ 畫布產生完成！');
+        setTimeout(() => setAnalyzeStatus('idle'), 2000);
         setViewMode('canvas');
+      } else {
+        throw new Error(data.error || '未知錯誤');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Generate graph failed", error);
+      setAnalyzeStatus('error');
+      setAnalyzeMsg(`❌ 畫布產生失敗：${error.message || '請稍後重試'}`);
+      setTimeout(() => setAnalyzeStatus('idle'), 4000);
     } finally {
       setIsUploading(false);
     }
@@ -615,7 +625,7 @@ export default function EditorPage() {
                 </div>
               )}
               
-              {project?.content && project.content.length > 10 && (
+              {project?.content && project.content.length > 10 && viewMode !== 'canvas' && (
                 <button 
                   onClick={generateCanvasGraph}
                   disabled={isUploading}
@@ -646,6 +656,22 @@ export default function EditorPage() {
             />
           ) : (
             <div className="fixed inset-0 top-12 z-20 bg-gray-50 dark:bg-[#0f0f0f]">
+              {/* Floating back button */}
+              <button
+                onClick={() => setViewMode('text')}
+                className="absolute top-4 left-4 z-30 flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-full text-sm font-medium shadow-lg hover:shadow-xl transition-all hover:scale-105 text-gray-700 dark:text-gray-200"
+              >
+                ← 返回文字懶人包
+              </button>
+              {/* Regenerate button */}
+              <button
+                onClick={generateCanvasGraph}
+                disabled={isUploading}
+                className="absolute top-4 right-4 z-30 flex items-center gap-2 px-4 py-2 bg-blue-600/90 dark:bg-blue-700/90 backdrop-blur-md rounded-full text-sm font-medium shadow-lg hover:shadow-xl transition-all hover:scale-105 text-white disabled:opacity-50"
+              >
+                {isUploading ? <Loader2 size={14} className="animate-spin" /> : "🔄"}
+                重新產生
+              </button>
               <CanvasEditor 
                 initialData={project?.graphData}
                 currentTime={youtubeTime}
