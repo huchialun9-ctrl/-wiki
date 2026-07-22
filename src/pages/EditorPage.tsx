@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import NotionEditor from '../components/NotionEditor';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { Paperclip, Loader2, X } from 'lucide-react';
+import { Paperclip, Loader2, X, LayoutTemplate } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContext';
 import CommentPanel from '../components/CommentPanel';
 import { API_BASE_URL } from '../config';
+import { templates } from "../utils/templates";
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -450,17 +451,43 @@ export default function EditorPage() {
           
           {/* Empty State Guide */}
           {!isUploading && project && (!project.content || project.content === '[]' || project.content.includes('"content":""')) && !aiBlocks && (
-            <div 
-              className="mb-8 p-12 border-2 border-dashed border-notion-border-light dark:border-notion-border-dark rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="w-20 h-20 mb-4 bg-blue-100 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <div className="mb-8">
+              <div 
+                className="p-12 border-2 border-dashed border-notion-border-light dark:border-notion-border-dark rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors mb-8"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="w-20 h-20 mb-4 bg-blue-100 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">上傳檔案或貼上 YouTube 網址以開始解析</h3>
+                <p className="text-notion-text-muted-light dark:text-notion-text-muted-dark max-w-md">
+                  點擊此處上傳 PDF、文件或影片。或是直接在上方搜尋列貼上 YouTube 網址，系統將自動擷取字幕並萃取精華！
+                </p>
               </div>
-              <h3 className="text-xl font-semibold mb-2">上傳檔案以開始解析</h3>
-              <p className="text-notion-text-muted-light dark:text-notion-text-muted-dark max-w-md">
-                點擊此處或使用上方的迴紋針按鈕，上傳 PDF、文件或影片。系統將自動為您萃取時間線與重點區塊！
-              </p>
+
+              {/* Template Library */}
+              <div className="mt-12">
+                <div className="flex items-center gap-2 mb-6 text-notion-text-muted-light dark:text-notion-text-muted-dark">
+                  <LayoutTemplate size={20} />
+                  <h3 className="text-lg font-semibold">或是從精選版型開始 (Template Library)</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {templates.map(tpl => (
+                    <div 
+                      key={tpl.id}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('insertBlocks', { detail: tpl.blocks }));
+                      }}
+                      className="p-5 border border-notion-border-light dark:border-notion-border-dark rounded-xl cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all group bg-white dark:bg-[#1E1E1E]"
+                    >
+                      <h4 className="font-bold text-lg mb-2 group-hover:text-blue-500 transition-colors">{tpl.title}</h4>
+                      <p className="text-sm text-notion-text-muted-light dark:text-notion-text-muted-dark leading-relaxed">
+                        {tpl.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

@@ -14,6 +14,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import http from 'http';
 import { Server } from 'socket.io';
+import { YoutubeTranscript } from 'youtube-transcript';
 
 dotenv.config();
 
@@ -458,19 +459,38 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
     let fileName = '';
 
     if (url) {
-      // URL Scraping
-      const response = await axios.get(url, { 
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5'
-        },
-        timeout: 10000
-      });
-      const $ = cheerio.load(response.data);
-      
-      // 深度去噪 (Remove structural noise)
-      $('script, style, nav, footer, header, aside, iframe, noscript, form, button, .ad, .advertisement, .sidebar, .comments, #comments, .menu').remove();
+      if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+        // YouTube Video Parsing
+        try {
+          const transcript = await YoutubeTranscript.fetchTranscript(url);
+          textContent = transcript.map(t => t.text).join(' ');
+          
+          // Also try to get title from the page
+          const response = await axios.get(url, { timeout: 10000 });
+          const $ = cheerio.load(response.data);
+          fileName = $('title').text() || url;
+        } catch (ytErr) {
+          console.warn("YouTube transcript failed, falling back to page parsing:", ytErr);
+          // Fallback to normal parsing if transcript fails (e.g. no CC)
+          const response = await axios.get(url, { timeout: 10000 });
+          const $ = cheerio.load(response.data);
+          fileName = $('title').text() || url;
+          textContent = $('body').text().replace(/\s+/g, ' ').trim();
+        }
+      } else {
+        // Normal URL Scraping
+        const response = await axios.get(url, { 
+          headers: { 
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5'
+          },
+          timeout: 10000
+        });
+        const $ = cheerio.load(response.data);
+        
+        // 深度去噪 (Remove structural noise)
+        $('script, style, nav, footer, header, aside, iframe, noscript, form, button, .ad, .advertisement, .sidebar, .comments, #comments, .menu').remove();
       
       // 保留排版呼吸空間 (Preserve structural spacing by inserting newlines)
       $('p, div, h1, h2, h3, h4, h5, h6, li, article, section').each((_, el) => {
@@ -488,6 +508,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req, r
         .trim();
         
       fileName = $('title').text().trim() || url;
+      }
     } else if (req.file) {
       // File Upload
       const filePath = req.file.path;
