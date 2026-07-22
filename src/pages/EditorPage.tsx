@@ -26,6 +26,7 @@ export default function EditorPage() {
   const [liveMode, setLiveMode] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'text' | 'canvas' | 'split'>('text');
+  const [analyzeFormat, setAnalyzeFormat] = useState('summary');
   const [youtubeTime, setYoutubeTime] = useState(0);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const { sidebarOpen, setSidebarOpen } = useOutletContext<{ sidebarOpen: boolean, setSidebarOpen: any }>();
@@ -239,10 +240,11 @@ export default function EditorPage() {
       const runAutoAnalysis = async () => {
         setIsUploading(true);
         try {
+          const formatFromUrl = searchParams.get('format') || 'summary';
           const response = await fetch(`${API_BASE_URL}/api/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ url: analyzeUrl, format: 'summary' })
+            body: JSON.stringify({ url: analyzeUrl, format: formatFromUrl })
           });
           const data = await response.json();
           
@@ -280,7 +282,7 @@ export default function EditorPage() {
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('format', 'summary');
+    formData.append('format', analyzeFormat);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -314,7 +316,7 @@ export default function EditorPage() {
         const response = await fetch(`${API_BASE_URL}/api/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ url, format: 'summary' })
+          body: JSON.stringify({ url, format: analyzeFormat })
         });
         const data = await response.json();
         
@@ -375,6 +377,15 @@ export default function EditorPage() {
           <div className="flex-1 max-w-2xl mx-auto flex items-center bg-gray-100/5 dark:bg-gray-800/5 rounded-md px-3 py-1.5 focus-within:ring-1 focus-within:ring-notion-border-light dark:focus-within:ring-notion-border-dark transition-shadow">
             <span className="text-blue-500 mr-2" title="AI 自動摘要">✨</span>
             
+            <select 
+              value={analyzeFormat}
+              onChange={(e) => setAnalyzeFormat(e.target.value)}
+              className="bg-transparent border-none outline-none text-sm text-notion-text-light dark:text-notion-text-dark font-medium cursor-pointer mr-2 shrink-0 border-r border-gray-200 dark:border-gray-700 pr-2"
+            >
+              <option value="summary">懶人包模式</option>
+              <option value="timeline">時間軸模式</option>
+              <option value="tree">心智圖模式</option>
+            </select>
 
             <input 
               type="text" 
