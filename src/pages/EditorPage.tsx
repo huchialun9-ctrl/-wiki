@@ -424,7 +424,7 @@ export default function EditorPage() {
 
             <input 
               type="text" 
-              placeholder="貼上 YouTube 連結、網址，或輸入 / 開始整理..."
+              placeholder="貼上新聞網址、文章連結，或輸入 / 開始整理..."
               onKeyDown={handleUrlSubmit}
               disabled={isUploading}
               className="w-full bg-transparent text-sm border-none outline-none placeholder:text-notion-text-muted-light dark:placeholder:text-notion-text-muted-dark disabled:opacity-50"
@@ -589,9 +589,9 @@ export default function EditorPage() {
                 <div className="w-20 h-20 mb-4 bg-blue-100 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">上傳檔案或貼上 YouTube 網址以開始解析</h3>
+                <h3 className="text-xl font-semibold mb-2">上傳檔案或貼上新聞/文章網址以開始解析</h3>
                 <p className="text-notion-text-muted-light dark:text-notion-text-muted-dark max-w-md">
-                  點擊此處上傳 PDF、文件或影片。或是直接在上方搜尋列貼上 YouTube 網址，系統將自動擷取字幕並萃取精華！
+                  點擊此處上傳 PDF、Word 或文件檔案，或是直接在上方搜尋列貼上新聞與文章連結，AI 將自動為您提煉重點精華與生成社群發文文案！
                 </p>
               </div>
 

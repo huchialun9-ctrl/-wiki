@@ -53,17 +53,17 @@ export default function HomePage() {
           
           <div className="relative z-10 p-12 md:w-1/2 text-white">
             <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">
-              {user?.name}，你好！<br/>歡迎來到您的專屬戰情室
+              {user?.name}，你好！<br/>歡迎使用 AI 新聞文章精華庫
             </h1>
             <p className="text-blue-100/80 text-lg mb-8 max-w-md leading-relaxed">
-              在這裡，您可以透過 AI 智能解析快速萃取重點，並與團隊成員協作，大幅提升創作與資訊整理的效率。
+              在這裡，您可以貼上任何新聞連結、文章網址或上傳文件，由 AI 快速為您提煉精華重點並生成社群文案，打造您的專屬知識庫。
             </p>
             <button 
               onClick={createProject}
               className="bg-white text-blue-900 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-50 transition-colors flex items-center gap-2"
             >
               <Plus size={20} />
-              立即建立新懶人包
+              立即整理新文章/新聞
             </button>
           </div>
           
