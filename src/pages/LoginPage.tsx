@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "../config";
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { safeFetch } from '../utils/safeFetch';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,16 +20,12 @@ export default function LoginPage() {
     const body = isLogin ? { email, password } : { email, password, name, role };
     
     try {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const data = await safeFetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed');
-      }
+      if (!data) throw new Error('伺服器沒有回傳任何資料');
       
       login(data.token, data.user);
     } catch (err: any) {
