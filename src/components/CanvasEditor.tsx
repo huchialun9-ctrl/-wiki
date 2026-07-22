@@ -180,7 +180,7 @@ function CanvasFlow({ initialData, onChange, onPlayNode, currentTime }: CanvasEd
   }, [currentTime, nodes, activeNodeId, setCenter, setNodes]);
 
   return (
-    <div className="w-full h-[calc(100vh-120px)] bg-gray-50 dark:bg-[#1A1A1A] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+    <div className="w-full h-full min-h-screen bg-gray-50 dark:bg-[#1A1A1A] overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}

@@ -413,7 +413,7 @@ export default function EditorPage() {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ graphData: graphDataStr })
         });
-        setViewMode('split');
+        setViewMode('canvas');
       }
     } catch (error) {
       console.error("Generate graph failed", error);
@@ -612,12 +612,6 @@ export default function EditorPage() {
                   >
                     🧩 畫布模式
                   </button>
-                  <button 
-                    onClick={() => setViewMode('split')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'split' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                  >
-                    📖 雙開分屏
-                  </button>
                 </div>
               )}
               
@@ -650,43 +644,21 @@ export default function EditorPage() {
               initialBlocks={project?.content ? JSON.parse(project.content) : undefined} 
               projectId={project?.id}
             />
-          ) : viewMode === 'canvas' ? (
-            <CanvasEditor 
-              initialData={project?.graphData}
-              currentTime={youtubeTime}
-              onPlayNode={(time) => setSeekTime(time)}
-              onChange={(data) => {
-                if (!id || !token) return;
-                fetch(`${API_BASE_URL}/api/projects/${id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({ graphData: data })
-                });
-              }}
-            />
           ) : (
-            <div className="flex flex-col xl:flex-row w-full gap-8">
-              <div className="w-full xl:w-1/2 overflow-y-auto custom-scrollbar pr-4">
-                <NotionEditor 
-                  initialBlocks={project?.content ? JSON.parse(project.content) : undefined} 
-                  projectId={project?.id}
-                />
-              </div>
-              <div className="w-full xl:w-1/2 border-l border-notion-border-light dark:border-notion-border-dark pl-4 h-[calc(100vh-250px)] sticky top-24">
-                <CanvasEditor 
-                  initialData={project?.graphData}
-                  currentTime={youtubeTime}
-                  onPlayNode={(time) => setSeekTime(time)}
-                  onChange={(data) => {
-                    if (!id || !token) return;
-                    fetch(`${API_BASE_URL}/api/projects/${id}`, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                      body: JSON.stringify({ graphData: data })
-                    });
-                  }}
-                />
-              </div>
+            <div className="fixed inset-0 top-12 z-20 bg-gray-50 dark:bg-[#0f0f0f]">
+              <CanvasEditor 
+                initialData={project?.graphData}
+                currentTime={youtubeTime}
+                onPlayNode={(time) => setSeekTime(time)}
+                onChange={(data) => {
+                  if (!id || !token) return;
+                  fetch(`${API_BASE_URL}/api/projects/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ graphData: data })
+                  });
+                }}
+              />
             </div>
           )}
 
