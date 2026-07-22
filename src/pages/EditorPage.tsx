@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import NotionEditor from '../components/NotionEditor';
-import ErrorBoundary from '../components/ErrorBoundary';
 import { Paperclip, Loader2, X, LayoutTemplate, FileText } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContext';
@@ -115,8 +114,7 @@ export default function EditorPage() {
 
   
   // AI Staging Area State
-  const [aiBlocks, setAiBlocks] = useState<any[] | null>(null);
-  const [aiTitle, setAiTitle] = useState<string>('');
+
 
   // 將字串轉換為 BlockNote 合法的 InlineContent 陣列
   const toInline = (text: string) => [{ type: "text" as const, text: String(text || ''), styles: {} }];
@@ -250,9 +248,8 @@ export default function EditorPage() {
           
           if (data.success && data.result) {
             const blocksToInsert = generateBlocksFromResult(data);
-            setAiTitle(`🌐 網頁解析: ${data.filename || analyzeUrl}`);
-            setAiBlocks(blocksToInsert);
-
+            window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
+            
             const ytId = getYoutubeId(analyzeUrl);
             if (ytId && project) {
               setProject((prev: any) => ({ ...prev, youtubeUrl: analyzeUrl }));
@@ -331,8 +328,7 @@ export default function EditorPage() {
       
       if (data.success && data.result) {
         const blocksToInsert = generateBlocksFromResult(data);
-        setAiTitle(`📄 檔案分析: ${file.name}`);
-        setAiBlocks(blocksToInsert);
+        window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
         
         // Auto generate canvas nodes layout for uploaded file
         if (project && !project.graphData) {
@@ -395,8 +391,7 @@ export default function EditorPage() {
         
         if (data.success && data.result) {
           const blocksToInsert = generateBlocksFromResult(data);
-          setAiTitle(`🌐 網頁解析: ${data.filename || url}`);
-          setAiBlocks(blocksToInsert);
+          window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
         }
       } catch (error) {
         console.error("URL Analysis failed", error);
@@ -515,8 +510,8 @@ export default function EditorPage() {
       {/* Editor & AI Staging Area Layout */}
       <div className={`flex flex-col xl:flex-row gap-6 w-full mx-auto py-12 pb-32 transition-all duration-300 ${liveMode ? 'max-w-5xl px-8 sm:px-16 text-lg' : 'max-w-7xl px-8 sm:px-12 text-base'}`}>
         
-        {/* Left/Main Document Area */}
-        <div className={`flex-1 min-w-0 transition-all duration-500 ${aiBlocks ? 'xl:w-1/2' : 'max-w-4xl mx-auto xl:px-12'}`}>
+       <main className="flex-1 overflow-y-auto relative p-6 flex gap-6 custom-scrollbar bg-gray-50 dark:bg-[#121212] transition-colors">
+        <div className={`flex-1 min-w-0 transition-all duration-500 max-w-4xl mx-auto xl:px-12`}>
           {/* Title Area */}
           <div className="mb-8 group relative no-print">
             <div className="flex items-center gap-4 mb-4">
@@ -610,7 +605,7 @@ export default function EditorPage() {
           )}
 
           {/* Empty State Guide */}
-          {!isUploading && project && (!project.content || project.content === '[]' || project.content.includes('"content":""')) && !aiBlocks && (
+          {!isUploading && project && (!project.content || project.content === '[]' || project.content.includes('"content":""')) && (
             <div className="mb-8">
               <div 
                 className="p-12 border-2 border-dashed border-notion-border-light dark:border-notion-border-dark rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-notion-hover-light dark:hover:bg-notion-hover-dark transition-colors mb-8"
@@ -662,58 +657,9 @@ export default function EditorPage() {
             </div>
           )}
         </div>
+      </main>
 
-        {/* Right: AI Staging Area */}
-        {aiBlocks && (
-          <div className="w-full xl:w-[45%] flex-shrink-0 bg-white dark:bg-[#1E1E1E] rounded-xl border border-notion-border-light dark:border-notion-border-dark overflow-hidden flex flex-col h-[calc(100vh-8rem)] sticky top-20 shadow-2xl animate-in slide-in-from-right-8 duration-500">
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-[#2A2A2A] border-b border-notion-border-light dark:border-notion-border-dark shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
-                  ✨
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">AI 展示區 (Staging Area)</h3>
-                  <p className="text-xs text-notion-text-muted-light">{aiTitle}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('insertBlocks', { 
-                      detail: [
-                        { type: "heading", props: { level: 3 }, content: aiTitle },
-                        ...aiBlocks,
-                        { type: "paragraph", content: "" }
-                      ]
-                    }));
-                    setAiBlocks(null);
-                  }}
-                  className="px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded shadow hover:bg-blue-600 transition-transform active:scale-95"
-                >
-                  全部插入左側
-                </button>
-                <button 
-                  onClick={() => setAiBlocks(null)}
-                  className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                  title="關閉展示區"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            
-            <div className="px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-xs flex gap-2 items-start border-b border-yellow-200 dark:border-yellow-800/50 shrink-0">
-              <span className="mt-0.5">💡</span>
-              <p>您可以直接將下方的區塊 <strong>拖曳 (Drag & Drop)</strong> 到左側的筆記中。完成後可點擊右上角關閉。</p>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-              <ErrorBoundary>
-                <NotionEditor key={aiTitle} projectId="ai-staging" initialBlocks={aiBlocks} readOnly={false} />
-              </ErrorBoundary>
-            </div>
-          </div>
-        )}
+
         {/* QR Code Modal */}
         {qrModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm" onClick={() => setQrModalOpen(false)}>
