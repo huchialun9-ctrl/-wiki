@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
+import { useParams, useOutletContext, useSearchParams, useNavigate } from 'react-router-dom';
 import NotionEditor from '../components/NotionEditor';
 import { Paperclip, Loader2, X, LayoutTemplate, FileText } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
@@ -17,6 +17,7 @@ const getYoutubeId = (url: string) => {
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState<any>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -294,7 +295,23 @@ export default function EditorPage() {
       
       if (data.success && data.result) {
         const blocksToInsert = generateBlocksFromResult(data);
-        window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
+        
+        if (id) {
+          window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
+        } else {
+          // Create new project when on home page
+          const createRes = await fetch(`${API_BASE_URL}/api/projects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ 
+              title: data.filename || file.name || '新分析報告', 
+              content: JSON.stringify(blocksToInsert)
+            })
+          });
+          const newProject = await createRes.json();
+          window.dispatchEvent(new Event('refreshProjects'));
+          navigate(`/project/${newProject.id}`);
+        }
       }
     } catch (error) {
       console.error("Upload failed", error);
@@ -322,7 +339,34 @@ export default function EditorPage() {
         
         if (data.success && data.result) {
           const blocksToInsert = generateBlocksFromResult(data);
-          window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
+          
+          if (id) {
+            window.dispatchEvent(new CustomEvent('insertBlocks', { detail: blocksToInsert }));
+            
+            const ytId = getYoutubeId(url);
+            if (ytId && project) {
+              setProject((prev: any) => ({ ...prev, youtubeUrl: url }));
+              fetch(`${API_BASE_URL}/api/projects/${project.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ youtubeUrl: url })
+              });
+            }
+          } else {
+            // Create new project when on home page
+            const createRes = await fetch(`${API_BASE_URL}/api/projects`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ 
+                title: data.filename || '新分析報告', 
+                content: JSON.stringify(blocksToInsert),
+                youtubeUrl: getYoutubeId(url) ? url : undefined
+              })
+            });
+            const newProject = await createRes.json();
+            window.dispatchEvent(new Event('refreshProjects'));
+            navigate(`/project/${newProject.id}`);
+          }
         }
       } catch (error) {
         console.error("URL Analysis failed", error);
