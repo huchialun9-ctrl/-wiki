@@ -9,6 +9,7 @@
     "build:all": "tsc -b && vite build && cd server && npm install && npx prisma generate",
     "start": "cd server && npx tsx index.ts",
     "lint": "oxlint",
+    "type-check": "tsc -b --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
