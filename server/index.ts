@@ -43,6 +43,9 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
+// File size limit: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);
@@ -52,7 +55,23 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['application/pdf', 'text/plain', 'text/markdown', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedExtensions = ['.pdf', '.txt', '.md', '.docx'];
+    const fileName = file.originalname.toLowerCase();
+    
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+    const hasValidMime = allowedMimes.includes(file.mimetype) || fileName.endsWith('.docx') || fileName.endsWith('.md');
+    
+    if (!hasValidExtension || !hasValidMime) {
+      return cb(new Error('不支援的檔案格式。僅支援：PDF、DOCX、TXT、MD'));
+    }
+    cb(null, true);
+  }
+});
 
 // Middleware
 app.use(cors());
@@ -501,6 +520,31 @@ function parseRobustJSON(str: string): any {
   }
 }
 
+// --- Enhanced Anti-Bot Detection ---
+const isAntiBotBlocked = (text: string): boolean => {
+  const lower = text.toLowerCase();
+  const antiBotPatterns = [
+    'cloudflare',
+    'security challenge',
+    'enable javascript',
+    'robot check',
+    'access denied',
+    'checking your browser',
+    'blocked',
+    'ip',
+    'ddos protection',
+    'just a moment',
+    'recaptcha',
+    'verify you are human',
+    'challenge',
+    'bot',
+    '防爬蟲',
+    '驗證'
+  ];
+  
+  return antiBotPatterns.some(pattern => lower.includes(pattern));
+};
+
 // --- AI Analysis API ---
 
 app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: any, res) => {
@@ -527,7 +571,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
         } catch (ytErr) {
           console.warn("YouTube transcript failed:", ytErr);
           return res.status(400).json({ 
-            error: '無法讀取 YouTube 影片字幕。原因可能是該影片沒有提供字幕（CC），或該影片目前遭到 YouTube 流量安全驗證限制（伺服器 IP 被暫時限制）。您可以嘗試使用其他影片，或直接複製字幕文字上傳為檔案進行分析。' 
+            error: '無法讀取 YouTube 影片字幕。原因可能是該影片沒有提供字幕（CC），或該影片目前遭到 YouTube 流量安全驗證限制（伺服器 IP 被暫時限制）。請改用其他新聞或文章連結。'
           });
         }
       } else {
@@ -545,14 +589,21 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
         // 深度去噪 (Remove structural noise)
         $('script, style, nav, footer, header, aside, iframe, noscript, form, button, .ad, .advertisement, .sidebar, .comments, #comments, .menu').remove();
       
-      // 保留排版呼吸空間 (Preserve structural spacing by inserting newlines)
-      $('p, div, h1, h2, h3, h4, h5, h6, li, article, section').each((_, el) => {
-        $(el).prepend('\\n');
-        $(el).append('\\n');
-      });
-      $('br').replaceWith('\\n');
+        // 保留排版呼吸空間 (Preserve structural spacing by inserting newlines)
+        $('p, div, h1, h2, h3, h4, h5, h6, li, article, section').each((_, el) => {
+          $(el).prepend('\n');
+          $(el).append('\n');
+        });
+        $('br').replaceWith('\n');
 
-      // 提取文字並進行�    } else if (req.file) {
+        // 提取文字並進行標準化
+        textContent = $('body').text()
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        fileName = $('title').text() || $('h1').text() || url;
+      }
+    } else if (req.file) {
       // File Upload
       const filePath = req.file.path;
       fileName = req.file.originalname;
@@ -569,16 +620,22 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
       } else {
         textContent = fs.readFileSync(filePath, 'utf-8');
       }
+      
+      // Clean up uploaded file
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Failed to delete temp file:', err);
+      });
     } else {
       return res.status(400).json({ error: 'No file or URL provided' });
     }
 
-        const finalFormat = requestedFormat || 'summary';
+    const finalFormat = requestedFormat || 'summary';
     let systemPrompt = '';
 
     if (finalFormat === 'social') {
-      const socialFormat = `{ "social": { "title": "文案企劃主標題", "platforms": [ { "name": "平台名稱(例如：小紅書爆款、IG 輪播圖企劃、Facebook 推廣長文、Threads 熱議串)", "content": "針對該平台特性優化、包含吸睛標題、生動表情符號與熱門標籤的完整文案稿" } ] } }`;
+      const socialFormat = `{ "social": { "title": "文案企劃主標題", "platforms": [ { "name": "平台名稱(例如：小紅書爆款、IG 輪播圖企劃、Facebook 推廣長文、Threads 熱議串)", "content": "完整的發文文案" } ] } }`;
       systemPrompt = `你是一個頂級的社群行銷企劃與文案寫作大師。請詳細閱讀提供的內容，將其重新整理編排為適合在社群媒體傳播的優質發文文案。
+
 請針對以下四個平台特性，各產出一篇極具吸引力的完整文案稿：
 1. 「小紅書爆款」：雙行痛點大標題、內容展開分點列述、豐富的 Emoji 表情、文末熱門 Tag 標籤。
 2. 「IG 輪播圖企劃」：規劃第 1 張至第 10 張圖的視覺文案內容（包含每張圖大綱、配圖畫面建議）與貼文說明。
@@ -589,7 +646,7 @@ app.post('/api/analyze', authenticateToken, upload.single('file'), async (req: a
 ${socialFormat}`;
     } else {
       // Default to summary
-      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（長文章每個重點說明需 100-200 字，短文章也至少需 50 字以上的具體 analysis，不能敷衍）", "quotes": ["原文金句一", "原文金句二"], "details": ["細節補充一", "細節補充二", "細節補充三"] } ] } }`;
+      const summaryFormat = `{ "summary": { "title": "報告主標題", "tldr": "一句話速讀核心結論", "keyPoints": [ { "point": "重點標題", "explanation": "重點說明（長文章100-200字，短文章50字以上）", "quotes": ["原文金句1"], "details": ["細項說明1", "細項說明2"] } ] } }`;
 
       systemPrompt = `你是一個頂級的商業顧問與資料分析專家。請詳細閱讀提供的內容，提取核心資訊，產生一份詳盡且結構完整的懶人包摘要報告。
 報告必須包含適量的 keyPoints（如果輸入的原文較短，提供 2~3 個重點即可；如果原文較長，請提供 4~8 個深度重點）。
@@ -604,24 +661,10 @@ ${summaryFormat}`;
       textContent = textContent.substring(0, 15000) + '...[截斷]';
     }
     
-    const isAntiBot = (text: string) => {
-      const lower = text.toLowerCase();
-      return (
-        lower.includes('cloudflare') ||
-        lower.includes('security challenge') ||
-        lower.includes('enable javascript') ||
-        lower.includes('robot check') ||
-        lower.includes('access denied') ||
-        lower.includes('checking your browser') ||
-        (lower.includes('blocked') && lower.includes('ip')) ||
-        lower.includes('ddos protection') ||
-        lower.includes('just a moment')
-      );
-    };
-
-    if (textContent.trim().length < 150 || isAntiBot(textContent)) {
+    // Enhanced anti-bot detection
+    if (textContent.trim().length < 150 || isAntiBotBlocked(textContent)) {
       return res.status(400).json({ 
-        error: '擷取網網頁內容失敗或遭到防爬蟲阻擋（如 Cloudflare 安全驗證）。請直接複製網頁文章內容，點擊右方迴紋針圖示上傳為 TXT/PDF 檔，或是將文字貼到編輯器中！' 
+        error: '擷取網網頁內容失敗或遭到防爬蟲阻擋（如 Cloudflare 安全驗證、reCAPTCHA 等）。請直接複製網頁文章內容，點擊右方迴紋針圖示上傳為 TXT/PDF 檔，或上傳其他不被防爬蟲保護的來源。'
       });
     }
 
@@ -655,6 +698,12 @@ ${summaryFormat}`;
     res.json({ success: true, result: resultObj, format: finalFormat, filename: fileName });
   } catch (err) {
     console.error('Analyze error:', err);
+    if (err instanceof Error && err.message.includes('不支援的檔案格式')) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (err instanceof Error && err.message.includes('File too large')) {
+      return res.status(413).json({ error: '檔案過大，請上傳小於 50MB 的檔案' });
+    }
     res.status(500).json({ error: 'Analysis failed' });
   }
 });
